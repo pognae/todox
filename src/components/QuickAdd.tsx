@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTodo } from '../TodoContext'
 import type { QuickAddMode } from '../types'
 
@@ -6,10 +6,24 @@ export function QuickAdd() {
   const { addTask, viewTitle, settings } = useTodo()
   const [value, setValue] = useState('')
   const [mode, setMode] = useState<QuickAddMode>(settings.defaultQuickAddMode)
+  const noteRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     setMode(settings.defaultQuickAddMode)
   }, [settings.defaultQuickAddMode])
+
+  const autosizeNote = () => {
+    const el = noteRef.current
+    if (!el) return
+    el.style.height = '0px'
+    el.style.height = `${el.scrollHeight}px`
+  }
+
+  useEffect(() => {
+    if (mode !== 'note') return
+    autosizeNote()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, value])
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -48,16 +62,30 @@ export function QuickAdd() {
             노트
           </button>
         </div>
-        <input
-          className="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-sm outline-none placeholder:text-neutral-400"
-          placeholder={
-            mode === 'task'
-              ? `‘${viewTitle}’에 작업 추가`
-              : '노트 본문 입력 (제목은 오늘 날짜로 자동 지정)'
-          }
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-        />
+        {mode === 'task' ? (
+          <input
+            className="min-w-0 flex-1 border-0 bg-transparent px-3 py-3 text-sm outline-none placeholder:text-neutral-400"
+            placeholder={`‘${viewTitle}’에 작업 추가`}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+        ) : (
+          <textarea
+            ref={noteRef}
+            rows={1}
+            className="min-w-0 flex-1 resize-none border-0 bg-transparent px-3 py-3 text-sm leading-5 outline-none placeholder:text-neutral-400"
+            placeholder="노트 본문 입력 (제목은 오늘 날짜로 자동 지정)"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onInput={autosizeNote}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return
+              if (e.shiftKey) return // 줄바꿈
+              e.preventDefault()
+              ;(e.currentTarget.form as HTMLFormElement | null)?.requestSubmit()
+            }}
+          />
+        )}
       </div>
       <p className="mt-1.5 text-xs text-neutral-400">
         {mode === 'task' ? (
@@ -66,7 +94,7 @@ export function QuickAdd() {
             마감일은 작업 상세에서 설정
           </>
         ) : (
-          <>Enter로 추가 · 제목은 「오늘 날짜 + 노트」형식이며, 위 입력은 설명란에 저장됩니다.</>
+          <>Enter로 추가 · Shift+Enter로 줄바꿈 · 제목은 「오늘 날짜 + 노트」형식이며, 위 입력은 설명란에 저장됩니다.</>
         )}
       </p>
     </form>
