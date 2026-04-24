@@ -44,7 +44,7 @@ function sortTasksForCell(a: Task, b: Task): number {
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
 
 export function CalendarMonth() {
-  const { view, setView, tasks, searchQuery, setSelectedTaskId } = useTodo()
+  const { view, setView, tasks, searchQuery, setSelectedTaskId, subtaskCounts, settings } = useTodo()
 
   if (view.type !== 'calendar') return null
 
@@ -54,13 +54,14 @@ export function CalendarMonth() {
     const m = new Map<string, Task[]>()
     for (const t of tasks) {
       if (!t.dueDate || !isDueInMonth(t.dueDate, year, month)) continue
+      if (!settings.showCompletedTasks && t.completed) continue
       if (!taskMatchesSearch(t, searchQuery)) continue
       if (!m.has(t.dueDate)) m.set(t.dueDate, [])
       m.get(t.dueDate)!.push(t)
     }
     for (const list of m.values()) list.sort(sortTasksForCell)
     return m
-  }, [tasks, year, month, searchQuery])
+  }, [tasks, year, month, searchQuery, settings.showCompletedTasks])
 
   const cells = useMemo(() => buildGrid(year, month), [year, month])
 
@@ -144,7 +145,9 @@ export function CalendarMonth() {
               <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
                 {buildTaskDisplayRows(dayTasks)
                   .slice(0, 4)
-                  .map(({ task: t, depth }) => (
+                  .map(({ task: t, depth }) => {
+                    const sc = !t.parentId ? (subtaskCounts[t.id] ?? 0) : 0
+                    return (
                   <li key={t.id}>
                     <button
                       type="button"
@@ -152,11 +155,22 @@ export function CalendarMonth() {
                       className={`w-full truncate rounded px-0.5 text-left text-[11px] leading-tight hover:bg-red-50 sm:text-xs ${
                         t.completed ? 'text-neutral-400 line-through' : 'text-neutral-700'
                       } ${depth > 0 ? 'pl-1.5' : ''}`}
-                      title={[t.title, t.dueTime ? formatTimeKorean(t.dueTime) : ''].filter(Boolean).join(' · ')}
+                      title={
+                        [
+                          t.title,
+                          t.dueTime ? formatTimeKorean(t.dueTime) : '',
+                          sc > 0 ? `하위 ${sc}개` : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                      }
                     >
                       <span className="block truncate">
                         {depth > 0 ? <span className="text-neutral-400">· </span> : null}
                         {t.title || '제목 없음'}
+                        {sc > 0 ? (
+                          <span className="ml-1 text-[10px] font-medium text-neutral-500">({sc})</span>
+                        ) : null}
                       </span>
                       {t.dueTime && (
                         <span className="block truncate text-[9px] font-normal text-neutral-400 sm:text-[10px]">
@@ -165,7 +179,8 @@ export function CalendarMonth() {
                       )}
                     </button>
                   </li>
-                ))}
+                    )
+                  })}
                 {dayTasks.length > 4 && (
                   <li className="text-[10px] text-neutral-400">+{dayTasks.length - 4}</li>
                 )}

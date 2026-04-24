@@ -32,11 +32,18 @@ export interface Project {
   isInbox?: boolean
 }
 
+/** 빠른 추가 입력란의 종류 */
+export type QuickAddMode = 'task' | 'note'
+
 export interface AppSettings {
   /** 마감 시간이 없을 때 이 시간에 알림 */
   defaultReminderTime: string
   /** 브라우저 알림 사용 여부 */
   notificationsEnabled: boolean
+  /** 메인 목록·달력에서 완료된 작업 표시 여부 */
+  showCompletedTasks: boolean
+  /** 빠른 추가에서 처음 선택되는 모드 */
+  defaultQuickAddMode: QuickAddMode
 }
 
 export type View =
@@ -46,3 +53,6 @@ export type View =
   | { type: 'project'; projectId: string }
   /** month: 1–12 */
   | { type: 'calendar'; year: number; month: number }
+  | { type: 'settings' }
+  /** 정규화된 태그 문자열(소문자 등) */
+  | { type: 'tag'; tag: string }

@@ -12,6 +12,21 @@ dist
 dist-ssr
 *.local
 
+release/*
+release/mac-arm64
+relesse/*.zip
+relesse/*.zip.*
+relesse/*.zip.blockmap
+relesse/*.tar.gz
+relesse/*.tar.bz2
+relesse/*.tar.xz
+relesse/*.tar.lzma
+relesse/*.tar.lz
+relesse/*.tar.lzo
+relesse/*.tar.lrz
+relesse/*.tar.lzo
+release/*.dmg*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

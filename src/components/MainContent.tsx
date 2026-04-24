@@ -5,6 +5,7 @@ import { useTodo } from '../TodoContext'
 import type { Task } from '../types'
 import { CalendarMonth } from './CalendarMonth'
 import { QuickAdd } from './QuickAdd'
+import { SettingsPanel } from './SettingsPanel'
 import { TaskItem } from './TaskItem'
 
 function groupUpcoming(tasks: Task[]): Map<string, Task[]> {
@@ -33,24 +34,28 @@ export function MainContent() {
     <main className="min-w-0 flex-1 overflow-y-auto bg-surface px-6 py-6 md:px-10">
       <header className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold text-neutral-800 md:text-2xl">{viewTitle}</h1>
-        <div className="relative w-full sm:max-w-xs">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </span>
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="태그·제목 검색"
-            className="w-full rounded-md border border-neutral-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-todoist-red focus:ring-1 focus:ring-todoist-red/25"
-            aria-label="태그 및 제목 검색"
-          />
-        </div>
+        {view.type !== 'settings' && (
+          <div className="relative w-full sm:max-w-xs">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </span>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="태그·제목 검색"
+              className="w-full rounded-md border border-neutral-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-todoist-red focus:ring-1 focus:ring-todoist-red/25"
+              aria-label="태그 및 제목 검색"
+            />
+          </div>
+        )}
       </header>
 
-      {view.type === 'calendar' ? (
+      {view.type === 'settings' ? (
+        <SettingsPanel />
+      ) : view.type === 'calendar' ? (
         <>
           <QuickAdd />
           <CalendarMonth />
@@ -81,7 +86,9 @@ export function MainContent() {
         )
       ) : visibleTasks.length === 0 ? (
         <p className="py-12 text-center text-sm text-neutral-500">
-          표시할 작업이 없습니다. 위에서 새 작업을 추가해 보세요.
+          {view.type === 'tag'
+            ? `‘#${view.tag}’ 태그가 붙은 작업이 없습니다. 빠른 추가로 #${view.tag}를 포함해 보세요.`
+            : '표시할 작업이 없습니다. 위에서 새 작업을 추가해 보세요.'}
         </p>
       ) : (
         <div className="rounded-lg border border-neutral-200 bg-white px-3 shadow-sm">

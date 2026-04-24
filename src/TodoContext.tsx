@@ -13,14 +13,15 @@ import {
   compareDueTime,
   compareISODates,
   firstDayOfMonthISO,
+  formatTodayNoteTitle,
   isDueToday,
   isOverdue,
   todayISO,
 } from './dateUtils'
 import { loadState, saveState } from './storage'
 import { computeNextDueDate } from './recurrence'
-import { normalizeTag, parseQuickAdd, taskMatchesSearch } from './tagUtils'
-import type { AppSettings, Project, Task, View } from './types'
+import { collectAllTagsFromTasks, normalizeTag, parseQuickAdd, taskMatchesSearch } from './tagUtils'
+import type { AppSettings, Project, QuickAddMode, Task, View } from './types'
 
 const INBOX_ID = 'inbox'
 
@@ -30,6 +31,52 @@ const defaultProjects: Project[] = [
 
 function uid(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+function resolveQuickAddProjectAndDue(
+  view: View,
+  opts?: { dueDate?: string | null; projectId?: string },
+): { projectId: string; dueDate: string | null } {
+  const today = todayISO()
+  let projectId = opts?.projectId ?? INBOX_ID
+  let dueDate: string | null = opts?.dueDate ?? null
+
+  if (view.type === 'today') {
+    dueDate = dueDate ?? today
+    projectId = opts?.projectId ?? INBOX_ID
+  } else if (view.type === 'upcoming') {
+    dueDate = dueDate ?? addDays(today, 1)
+  } else if (view.type === 'inbox') {
+    projectId = INBOX_ID
+  } else if (view.type === 'project') {
+    projectId = view.projectId
+  } else if (view.type === 'calendar') {
+    dueDate = dueDate ?? firstDayOfMonthISO(view.year, view.month)
+    projectId = opts?.projectId ?? INBOX_ID
+  } else if (view.type === 'settings') {
+    projectId = INBOX_ID
+  } else if (view.type === 'tag') {
+    projectId = INBOX_ID
+  }
+
+  return { projectId, dueDate }
+}
+
+function extraTagsFromView(view: View): string[] {
+  if (view.type === 'tag' && view.tag) return [view.tag]
+  return []
+}
+
+/** 체크박스 한 번과 동일한 완료 전이(반복이면 다음 마감일) */
+function applyToggleCompleteState(t: Task): Task {
+  if (t.completed) {
+    return { ...t, completed: false }
+  }
+  if (t.recurrence && t.dueDate) {
+    const next = computeNextDueDate(t.dueDate, t.recurrence)
+    return { ...t, completed: false, dueDate: next }
+  }
+  return { ...t, completed: true }
 }
 
 interface TodoContextValue {
@@ -42,7 +89,10 @@ interface TodoContextValue {
   addProject: (name: string) => void
   renameProject: (id: string, name: string) => void
   deleteProject: (id: string) => void
-  addTask: (title: string, opts?: { dueDate?: string | null; projectId?: string; tags?: string[] }) => void
+  addTask: (
+    title: string,
+    opts?: { dueDate?: string | null; projectId?: string; tags?: string[]; mode?: QuickAddMode },
+  ) => void
   updateTask: (
     id: string,
     patch: Partial<
@@ -64,11 +114,15 @@ interface TodoContextValue {
   toggleTaskCompleted: (id: string) => void
   removeTask: (id: string) => void
   addSubtask: (parentId: string, title: string, requestId?: string) => void
+  /** parentId → 직속 하위 작업 개수 */
+  subtaskCounts: Record<string, number>
   visibleTasks: Task[]
   viewTitle: string
   projectForTask: (task: Task) => Project | undefined
   searchQuery: string
   setSearchQuery: (q: string) => void
+  /** 전체 작업에서 수집한 태그 목록(정렬됨) */
+  allTags: string[]
   settings: AppSettings
   updateSettings: (patch: Partial<AppSettings>) => void
   requestNotificationPermission: () => Promise<NotificationPermission | 'unsupported'>
@@ -160,6 +214,8 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     return {
       defaultReminderTime: s?.defaultReminderTime ?? '09:00',
       notificationsEnabled: s?.notificationsEnabled ?? false,
+      showCompletedTasks: s?.showCompletedTasks ?? true,
+      defaultQuickAddMode: s?.defaultQuickAddMode ?? 'task',
     }
   })
   const recentSubtaskRequestsRef = useRef<Map<string, number>>(new Map())
@@ -204,8 +260,38 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addTask = useCallback(
-    (title: string, opts?: { dueDate?: string | null; projectId?: string; tags?: string[] }) => {
+    (
+      title: string,
+      opts?: { dueDate?: string | null; projectId?: string; tags?: string[]; mode?: QuickAddMode },
+    ) => {
+      const mode = opts?.mode ?? 'task'
       const trimmed = title.trim()
+
+      if (mode === 'note') {
+        if (!trimmed) return
+        const finalTitle = formatTodayNoteTitle()
+        const { projectId, dueDate } = resolveQuickAddProjectAndDue(view, opts)
+
+        const noteTags = [...new Set([...extraTagsFromView(view)])]
+
+        const task: Task = {
+          id: uid(),
+          title: finalTitle,
+          description: trimmed,
+          completed: false,
+          dueDate,
+          dueTime: null,
+          priority: 4,
+          projectId,
+          createdAt: new Date().toISOString(),
+          tags: noteTags,
+          recurrence: null,
+          parentId: null,
+        }
+        setTasks((t) => [task, ...t])
+        return
+      }
+
       if (!trimmed) return
       const { title: parsedTitle, tags: parsedTags } = parseQuickAdd(trimmed)
       let finalTitle = parsedTitle
@@ -213,26 +299,10 @@ export function TodoProvider({ children }: { children: ReactNode }) {
         finalTitle = '새 작업'
       if (!finalTitle) return
 
-      const today = todayISO()
-      let projectId = opts?.projectId ?? INBOX_ID
-      let dueDate: string | null = opts?.dueDate ?? null
-
-      if (view.type === 'today') {
-        dueDate = dueDate ?? today
-        projectId = opts?.projectId ?? INBOX_ID
-      } else if (view.type === 'upcoming') {
-        dueDate = dueDate ?? addDays(today, 1)
-      } else if (view.type === 'inbox') {
-        projectId = INBOX_ID
-      } else if (view.type === 'project') {
-        projectId = view.projectId
-      } else if (view.type === 'calendar') {
-        dueDate = dueDate ?? firstDayOfMonthISO(view.year, view.month)
-        projectId = opts?.projectId ?? INBOX_ID
-      }
+      const { projectId, dueDate } = resolveQuickAddProjectAndDue(view, opts)
 
       const tagSet = new Set<string>()
-      for (const x of [...(opts?.tags ?? []), ...parsedTags]) {
+      for (const x of [...extraTagsFromView(view), ...(opts?.tags ?? []), ...parsedTags]) {
         const n = normalizeTag(x)
         if (n) tagSet.add(n)
       }
@@ -315,12 +385,17 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       const trimmed = title.trim()
       if (!trimmed) return
       const now = Date.now()
+      const m = recentSubtaskRequestsRef.current
+      for (const [k, ts] of m.entries()) {
+        if (now - ts > 5000) m.delete(k)
+      }
+      // 한글 IME 등으로 Enter가 연속 발생할 때 동일 제목이 짧은 시간에 두 번 들어오는 것 방지
+      const contentKey = `sub:${parentId}:${trimmed}`
+      const lastAt = m.get(contentKey)
+      if (lastAt !== undefined && now - lastAt < 700) return
+      m.set(contentKey, now)
+
       if (requestId) {
-        const m = recentSubtaskRequestsRef.current
-        // 오래된 키 정리 (5초)
-        for (const [k, ts] of m.entries()) {
-          if (now - ts > 5000) m.delete(k)
-        }
         if (m.has(requestId)) return
         m.set(requestId, now)
       }
@@ -349,19 +424,29 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   )
 
   const toggleTaskCompleted = useCallback((id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id !== id) return t
-        if (t.completed) {
-          return { ...t, completed: false }
-        }
-        if (t.recurrence && t.dueDate) {
-          const next = computeNextDueDate(t.dueDate, t.recurrence)
-          return { ...t, completed: false, dueDate: next }
-        }
-        return { ...t, completed: true }
-      }),
-    )
+    setTasks((prev) => {
+      let next = prev.map((t) => (t.id === id ? applyToggleCompleteState(t) : t))
+
+      const self = next.find((t) => t.id === id)
+      const pid = self?.parentId
+      if (!pid) return next
+
+      const siblings = next.filter((t) => t.parentId === pid)
+      const allChildrenDone =
+        siblings.length > 0 && siblings.every((c) => c.completed)
+
+      if (allChildrenDone) {
+        next = next.map((t) => {
+          if (t.id !== pid) return t
+          if (t.completed) return t
+          return applyToggleCompleteState(t)
+        })
+      } else {
+        next = next.map((t) => (t.id === pid ? { ...t, completed: false } : t))
+      }
+
+      return next
+    })
   }, [])
 
   const removeTask = useCallback((id: string) => {
@@ -415,6 +500,17 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       return { baseVisibleTasks: [], viewTitle: '캘린더' }
     }
 
+    if (view.type === 'settings') {
+      return { baseVisibleTasks: [], viewTitle: '설정' }
+    }
+
+    if (view.type === 'tag') {
+      return {
+        baseVisibleTasks: allSorted.filter((t) => t.tags.includes(view.tag)),
+        viewTitle: `#${view.tag}`,
+      }
+    }
+
     const proj = projects.find((p) => p.id === view.projectId)
     return {
       baseVisibleTasks: allSorted.filter((t) => t.projectId === view.projectId),
@@ -422,10 +518,32 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     }
   }, [tasks, view, projects])
 
-  const visibleTasks = useMemo(
-    () => baseVisibleTasks.filter((t) => taskMatchesSearch(t, searchQuery)),
-    [baseVisibleTasks, searchQuery],
-  )
+  const visibleTasks = useMemo(() => {
+    let list = baseVisibleTasks.filter((t) => taskMatchesSearch(t, searchQuery))
+    if (!settings.showCompletedTasks) {
+      list = list.filter((t) => !t.completed)
+    }
+    return list
+  }, [baseVisibleTasks, searchQuery, settings.showCompletedTasks])
+
+  const subtaskCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const t of tasks) {
+      if (!t.parentId) continue
+      counts[t.parentId] = (counts[t.parentId] ?? 0) + 1
+    }
+    return counts
+  }, [tasks])
+
+  const allTags = useMemo(() => collectAllTagsFromTasks(tasks), [tasks])
+
+  useEffect(() => {
+    setView((v) => {
+      if (v.type !== 'tag') return v
+      const stillExists = tasks.some((t) => t.tags.includes(v.tag))
+      return stillExists ? v : { type: 'inbox' }
+    })
+  }, [tasks])
 
   const updateSettings = useCallback((patch: Partial<AppSettings>) => {
     setSettings((s) => ({ ...s, ...patch }))
@@ -456,11 +574,13 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       toggleTaskCompleted,
       removeTask,
       addSubtask,
+      subtaskCounts,
       visibleTasks,
       viewTitle,
       projectForTask,
       searchQuery,
       setSearchQuery,
+      allTags,
       settings,
       updateSettings,
       requestNotificationPermission,
@@ -478,10 +598,12 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       toggleTaskCompleted,
       removeTask,
       addSubtask,
+      subtaskCounts,
       visibleTasks,
       viewTitle,
       projectForTask,
       searchQuery,
+      allTags,
       settings,
       updateSettings,
       requestNotificationPermission,

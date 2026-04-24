@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useTodo } from '../TodoContext'
 
 function NavButton({
@@ -31,31 +31,9 @@ function NavButton({
 }
 
 export function Sidebar() {
-  const {
-    view,
-    setView,
-    projects,
-    addProject,
-    deleteProject,
-    settings,
-    updateSettings,
-    requestNotificationPermission,
-  } = useTodo()
+  const { view, setView, projects, addProject, deleteProject, allTags } = useTodo()
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
-  const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(() => {
-    if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported'
-    return Notification.permission
-  })
-
-  useEffect(() => {
-    const onVis = () => {
-      if (typeof window === 'undefined' || !('Notification' in window)) return
-      setPermission(Notification.permission)
-    }
-    document.addEventListener('visibilitychange', onVis)
-    return () => document.removeEventListener('visibilitychange', onVis)
-  }, [])
 
   const customProjects = projects.filter((p) => !p.isInbox)
 
@@ -71,7 +49,7 @@ export function Sidebar() {
         <span className="text-2xl font-bold tracking-tight text-todoist-red">todox</span>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 px-2 pb-4">
+      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-4">
         <NavButton
           active={view.type === 'inbox'}
           onClick={() => setView({ type: 'inbox' })}
@@ -112,6 +90,22 @@ export function Sidebar() {
           icon={
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          }
+        />
+        <NavButton
+          active={view.type === 'settings'}
+          onClick={() => setView({ type: 'settings' })}
+          label="설정"
+          icon={
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           }
         />
@@ -187,51 +181,33 @@ export function Sidebar() {
             프로젝트 추가
           </button>
         )}
+
+        <p className="mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wide text-neutral-400">태그</p>
+        {allTags.length === 0 ? (
+          <p className="px-3 py-1 text-xs text-neutral-400">작업에 #태그를 붙이면 여기에 표시됩니다.</p>
+        ) : (
+          <ul className="flex flex-col gap-0.5">
+            {allTags.map((tag) => {
+              const active = view.type === 'tag' && view.tag === tag
+              return (
+                <li key={tag}>
+                  <button
+                    type="button"
+                    onClick={() => setView({ type: 'tag', tag })}
+                    className={`flex w-full items-center rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                      active
+                        ? 'bg-red-50 font-medium text-todoist-red'
+                        : 'text-neutral-700 hover:bg-neutral-200/80'
+                    }`}
+                  >
+                    <span className="min-w-0 truncate">#{tag}</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
       </nav>
-
-      <div className="border-t border-neutral-200 p-3">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">알림 설정</p>
-        <label className="mb-2 flex items-center justify-between gap-2 text-sm text-neutral-700">
-          <span>브라우저 알림</span>
-          <input
-            type="checkbox"
-            checked={settings.notificationsEnabled}
-            onChange={(e) => updateSettings({ notificationsEnabled: e.target.checked })}
-          />
-        </label>
-        <label className="mb-2 flex items-center justify-between gap-2 text-sm text-neutral-700">
-          <span className="text-neutral-600">기본 알림 시간</span>
-          <input
-            type="time"
-            className="rounded border border-neutral-200 bg-white px-2 py-1 text-sm"
-            value={settings.defaultReminderTime}
-            onChange={(e) => updateSettings({ defaultReminderTime: e.target.value })}
-          />
-        </label>
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            className="rounded border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50"
-            onClick={async () => {
-              const res = await requestNotificationPermission()
-              if (res !== 'unsupported') setPermission(res)
-            }}
-          >
-            권한 요청
-          </button>
-          <span className="text-xs text-neutral-400">
-            상태: {permission === 'unsupported' ? '미지원' : permission}
-          </span>
-        </div>
-
-        <p className="mt-3 text-xs text-neutral-400">
-          로컬에만 저장됩니다. 이 앱은{' '}
-          <a className="underline hover:text-neutral-600" href="https://todoist.com/" target="_blank" rel="noreferrer">
-            Todoist
-          </a>
-          의 데모용 클론입니다.
-        </p>
-      </div>
     </aside>
   )
 }

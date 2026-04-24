@@ -30,3 +30,14 @@ export function taskMatchesSearch(task: Pick<Task, 'title' | 'tags'>, q: string)
   if (task.title.toLowerCase().includes(s)) return true
   return task.tags.some((tag) => tag.includes(s))
 }
+
+/** 작업·노트에 붙어 있는 모든 태그를 중복 없이 가나다순으로 */
+export function collectAllTagsFromTasks(tasks: Task[]): string[] {
+  const set = new Set<string>()
+  for (const t of tasks) {
+    for (const tag of t.tags) {
+      if (tag) set.add(tag)
+    }
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, 'ko'))
+}

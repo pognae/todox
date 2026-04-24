@@ -10,13 +10,20 @@ const priorityDot: Record<number, string> = {
 }
 
 export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
-  const { toggleTaskCompleted, setSelectedTaskId, selectedTaskId, projectForTask, setSearchQuery } =
-    useTodo()
+  const {
+    toggleTaskCompleted,
+    setSelectedTaskId,
+    selectedTaskId,
+    projectForTask,
+    setSearchQuery,
+    subtaskCounts,
+  } = useTodo()
   const selected = selectedTaskId === task.id
   const proj = projectForTask(task)
   const overdue =
     task.dueDate && !task.completed && isOverdueWithTime(task.dueDate, task.dueTime)
   const isSub = depth > 0
+  const subCount = !task.parentId ? (subtaskCounts[task.id] ?? 0) : 0
 
   return (
     <div
@@ -66,6 +73,14 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
           )}
           {task.priority < 4 && (
             <span className={`h-2 w-2 shrink-0 rounded-full ${priorityDot[task.priority]}`} />
+          )}
+          {subCount > 0 && (
+            <span
+              className="shrink-0 rounded-full bg-neutral-200 px-2 py-0.5 text-[11px] font-medium text-neutral-600"
+              title={`하위 작업 ${subCount}개`}
+            >
+              하위 {subCount}개
+            </span>
           )}
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-neutral-500">

@@ -47,6 +47,17 @@ export function formatKoreanDate(iso: string): string {
   }).format(d)
 }
 
+/** 노트 빠른 추가 시 제목: "2026년 4월 24일 목요일 노트" 형태 */
+export function formatTodayNoteTitle(d: Date = new Date()): string {
+  const head = new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  }).format(d)
+  return `${head} 노트`
+}
+
 function pad2(n: number): string {
   return n < 10 ? `0${n}` : String(n)
 }

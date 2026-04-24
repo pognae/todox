@@ -193,6 +193,8 @@ export function TaskDetailPanel() {
                   onChange={(e) => setSubDraft(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key !== 'Enter') return
+                    // 한글 등 IME 조합 중 Enter는 조합 확정용으로 한 번 더 올 수 있음
+                    if (e.nativeEvent.isComposing) return
                     e.preventDefault()
                     e.stopPropagation()
                     if (!subDraft.trim()) return
