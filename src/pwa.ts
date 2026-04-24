@@ -1,9 +1,12 @@
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window === 'undefined') return null
   if (!('serviceWorker' in navigator)) return null
+  // Electron(file://) 등에서는 SW가 동작하지 않거나 등록이 실패하는 경우가 많음
+  if (window.location.protocol === 'file:') return null
 
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js')
+    const url = `${import.meta.env.BASE_URL}sw.js`
+    const reg = await navigator.serviceWorker.register(url)
     return reg
   } catch {
     return null

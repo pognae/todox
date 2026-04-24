@@ -71,3 +71,23 @@ export default defineConfig([
   },
 ])
 ```
+
+
+
+사용 방법
+개발 (Vite + Electron 동시)
+
+npm run electron:dev
+웹만 빌드한 뒤 Electron으로 실행
+
+npm run build
+npm run electron:start
+macOS 설치 파일 만들기
+
+npm run electron:build
+결과물은 release/ 아래에 생성됩니다. (예: todox-0.1.0-arm64.dmg, todox-0.1.0-arm64-mac.zip)
+
+참고
+지금은 기본 Electron 아이콘을 쓰고, 애드혹 서명만 된 상태입니다. 다른 사람에게 배포하려면 Apple 개발자 계정으로 서명·공증(notarize) 이 필요할 수 있습니다.
+Intel 맥용까지 필요하면 electron:build에 --x64 또는 mac.target에 x64를 추가하면 됩니다.
+아이콘(.icns)까지 넣어서 더 “앱스럽게” 다듬고 싶으면 말해 주세요.
