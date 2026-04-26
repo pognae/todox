@@ -1,73 +1,44 @@
-# React + TypeScript + Vite
+# todox
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Vite + React + TypeScript로 만든 간단한 할 일 앱입니다.  
+데이터는 **Supabase(Postgres)** 에 저장되며, 기본 로그인은 **익명 로그인(Anonymous sign-in)** 을 사용합니다.
 
-Currently, two official plugins are available:
+## Supabase 설정(필수)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### 1) Auth에서 Anonymous sign-ins 활성화
+- Supabase 대시보드 → **Auth** → **Sign-in methods** → **Anonymous** 활성화
 
-## React Compiler
+### (선택) Google 로그인 활성화
+- Supabase 대시보드 → **Auth** → **Sign-in methods** → **Google** 활성화
+- Redirect URL에 개발/배포 도메인을 추가해야 합니다. (로컬 개발이면 보통 `http://localhost:5173`)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 2) 테이블/RLS 생성
+- Supabase SQL Editor에서 `supabase.sql` 실행
 
-## Expanding the ESLint configuration
+### 3) 환경변수 설정
+루트에 `.env` 파일을 만들고 아래를 채웁니다. (예시는 `.env.example`)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 실행
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Windows PowerShell에서 npm이 안 잡히는 경우
+이 프로젝트 환경에 따라 `npm`이 PATH에 없을 수 있어요. 그럴 땐 아래처럼 `npm.cmd`를 직접 호출하면 됩니다.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```powershell
+& "C:\Program Files\nodejs\npm.cmd" install
+& "C:\Program Files\nodejs\npm.cmd" run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 정상적으로 npm이 잡히는 경우
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
+
+## 동작 방식(요약)
+- 앱 시작 시 로컬 캐시(`localStorage`)로 즉시 렌더링
+- 백그라운드에서 Supabase의 `todox_user_states`에서 상태를 불러와 덮어씀
+- 변경사항은 **디바운스** 후 Supabase에 `upsert`로 저장

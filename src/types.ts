@@ -17,6 +17,8 @@ export interface Task {
   priority: Priority
   projectId: string
   createdAt: string
+  /** 작업이 마지막으로 변경된 시각(병합/충돌 해결용). 없으면 createdAt을 사용 */
+  updatedAt?: string
   /** 소문자·정규화된 태그 목록 */
   tags: string[]
   /** 마감일이 있을 때만 의미 있음 */
@@ -30,6 +32,8 @@ export interface Project {
   name: string
   color: string
   isInbox?: boolean
+  /** 프로젝트가 마지막으로 변경된 시각(병합/충돌 해결용) */
+  updatedAt?: string
 }
 
 /** 빠른 추가 입력란의 종류 */

@@ -18,7 +18,8 @@ import {
   isOverdue,
   todayISO,
 } from './dateUtils'
-import { loadState, saveState } from './storage'
+import { loadState, loadStateFromRemote, saveState } from './storage'
+import { onAuthStateChange } from './supabaseClient'
 import { computeNextDueDate } from './recurrence'
 import { collectAllTagsFromTasks, normalizeTag, parseQuickAdd, taskMatchesSearch } from './tagUtils'
 import type { AppSettings, Project, QuickAddMode, Task, View } from './types'
@@ -126,6 +127,7 @@ interface TodoContextValue {
   settings: AppSettings
   updateSettings: (patch: Partial<AppSettings>) => void
   requestNotificationPermission: () => Promise<NotificationPermission | 'unsupported'>
+  applyExternalState: (next: { tasks: Task[]; projects: Project[]; settings?: AppSettings }) => void
 }
 
 const TodoContext = createContext<TodoContextValue | null>(null)
@@ -134,6 +136,7 @@ function initialTasks(): Task[] {
   const today = todayISO()
   const parentId = uid()
   const subId = uid()
+  const nowIso = new Date().toISOString()
   return [
     {
       id: parentId,
@@ -144,7 +147,8 @@ function initialTasks(): Task[] {
       dueTime: '09:00',
       priority: 4,
       projectId: INBOX_ID,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
       tags: ['가이드'],
       recurrence: null,
       parentId: null,
@@ -158,7 +162,8 @@ function initialTasks(): Task[] {
       dueTime: null,
       priority: 4,
       projectId: INBOX_ID,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
       tags: [],
       recurrence: null,
       parentId,
@@ -172,7 +177,8 @@ function initialTasks(): Task[] {
       dueTime: null,
       priority: 4,
       projectId: INBOX_ID,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
       tags: ['가이드'],
       recurrence: null,
       parentId: null,
@@ -197,6 +203,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
         dueTime: x.dueTime ?? null,
         recurrence: x.recurrence ?? null,
         parentId: x.parentId ?? null,
+        updatedAt: x.updatedAt ?? x.createdAt,
       }
     })
     return step1.map((t) => {
@@ -220,6 +227,74 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   })
   const recentSubtaskRequestsRef = useRef<Map<string, number>>(new Map())
 
+  const applyExternalState = useCallback(
+    (next: { tasks: Task[]; projects: Project[]; settings?: AppSettings }) => {
+      const nextProjects = next.projects?.length ? next.projects : defaultProjects
+      setProjects(() =>
+        nextProjects.some((x) => x.id === INBOX_ID) ? nextProjects : [defaultProjects[0], ...nextProjects],
+      )
+
+      setTasks(() => {
+        const raw = next.tasks?.length ? next.tasks : initialTasks()
+        const step1 = raw.map((t) => {
+          const x = t as Task
+          return {
+            ...x,
+            tags: Array.isArray(x.tags)
+              ? [...new Set(x.tags.map((tag) => normalizeTag(String(tag))).filter(Boolean))]
+              : [],
+            dueTime: x.dueTime ?? null,
+            recurrence: x.recurrence ?? null,
+            parentId: x.parentId ?? null,
+            updatedAt: x.updatedAt ?? x.createdAt,
+          }
+        })
+        return step1.map((t) => {
+          if (!t.parentId) return t
+          const p = step1.find((x) => x.id === t.parentId)
+          if (!p || p.parentId) return { ...t, parentId: null }
+          return t
+        })
+      })
+
+      if (next.settings) setSettings((s) => ({ ...s, ...next.settings }))
+    },
+    [],
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const remote = await loadStateFromRemote()
+      if (cancelled || !remote) return
+
+      // 원격 상태가 있으면 그걸 우선시
+      applyExternalState(remote)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // 로그인 상태가 바뀌면(익명→이메일 등) 새 계정의 원격 상태를 우선 적용
+  // 원격 상태가 없으면 현재 로컬 상태를 새 계정에 시드(upsert)합니다.
+  useEffect(() => {
+    const unsub = onAuthStateChange(() => {
+      void (async () => {
+        const remote = await loadStateFromRemote()
+        if (remote) {
+          applyExternalState(remote)
+        } else {
+          // 새 계정(또는 빈 계정)이면 현재 상태를 저장해서 동기화 시작
+          saveState({ tasks, projects, settings })
+        }
+      })()
+    })
+    return () => {
+      unsub?.()
+    }
+  }, [tasks, projects, settings])
+
   useEffect(() => {
     saveState({ tasks, projects, settings })
   }, [tasks, projects, settings])
@@ -236,13 +311,15 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   const addProject = useCallback((name: string) => {
     const colors = ['#7b68ee', '#299438', '#808080', '#db4c3f', '#246fe0']
     const color = colors[Math.floor(Math.random() * colors.length)]
-    setProjects((p) => [...p, { id: uid(), name: name.trim() || '새 프로젝트', color }])
+    const now = new Date().toISOString()
+    setProjects((p) => [...p, { id: uid(), name: name.trim() || '새 프로젝트', color, updatedAt: now }])
   }, [])
 
   const renameProject = useCallback((id: string, name: string) => {
     if (id === INBOX_ID) return
+    const now = new Date().toISOString()
     setProjects((p) =>
-      p.map((x) => (x.id === id ? { ...x, name: name.trim() || x.name } : x)),
+      p.map((x) => (x.id === id ? { ...x, name: name.trim() || x.name, updatedAt: now } : x)),
     )
   }, [])
 
@@ -283,7 +360,8 @@ export function TodoProvider({ children }: { children: ReactNode }) {
           dueTime: null,
           priority: 4,
           projectId,
-          createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
           tags: noteTags,
           recurrence: null,
           parentId: null,
@@ -317,6 +395,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
         priority: 4,
         projectId,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         tags: [...tagSet],
         recurrence: null,
         parentId: null,
@@ -348,7 +427,8 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       setTasks((prev) => {
         let next = prev.map((x) => {
           if (x.id !== id) return x
-          let merged: Task = { ...x, ...patch }
+          const now = new Date().toISOString()
+          let merged: Task = { ...x, ...patch, updatedAt: now }
           if (patch.parentId !== undefined) {
             if (patch.parentId === null) {
               merged = { ...merged, parentId: null }
@@ -414,6 +494,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
         priority: 4,
         projectId: parent.projectId,
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         tags: [...tagSet],
         recurrence: null,
         parentId,
@@ -425,7 +506,8 @@ export function TodoProvider({ children }: { children: ReactNode }) {
 
   const toggleTaskCompleted = useCallback((id: string) => {
     setTasks((prev) => {
-      let next = prev.map((t) => (t.id === id ? applyToggleCompleteState(t) : t))
+      const now = new Date().toISOString()
+      let next = prev.map((t) => (t.id === id ? { ...applyToggleCompleteState(t), updatedAt: now } : t))
 
       const self = next.find((t) => t.id === id)
       const pid = self?.parentId
@@ -439,7 +521,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
         next = next.map((t) => {
           if (t.id !== pid) return t
           if (t.completed) return t
-          return applyToggleCompleteState(t)
+          return { ...applyToggleCompleteState(t), updatedAt: now }
         })
       } else {
         next = next.map((t) => (t.id === pid ? { ...t, completed: false } : t))
@@ -584,6 +666,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       settings,
       updateSettings,
       requestNotificationPermission,
+      applyExternalState,
     }),
     [
       projects,
@@ -607,6 +690,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       settings,
       updateSettings,
       requestNotificationPermission,
+      applyExternalState,
     ],
   )
 
