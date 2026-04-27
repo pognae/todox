@@ -10,7 +10,8 @@ Vite + React + TypeScript로 만든 간단한 할 일 앱입니다.
 
 ### (선택) Google 로그인 활성화
 - Supabase 대시보드 → **Auth** → **Sign-in methods** → **Google** 활성화
-- Redirect URL에 개발/배포 도메인을 추가해야 합니다. (로컬 개발이면 보통 `http://localhost:5173`)
+- Redirect URL에 개발/배포 도메인을 추가해야 합니다. (로컬 개발이면 보통 `http://localhost:57327`)
+  - Android(Capacitor) 앱을 쓰는 경우 Redirect URL에 `todox://auth-callback`도 추가하세요.
 
 ### 2) 테이블/RLS 생성
 - Supabase SQL Editor에서 `supabase.sql` 실행
@@ -22,6 +23,18 @@ Vite + React + TypeScript로 만든 간단한 할 일 앱입니다.
 - `VITE_SUPABASE_ANON_KEY`
 
 ## 실행
+
+## Android 앱 빌드(Capacitor)
+- **사전 준비물**: Android Studio(권장), JDK 17+(Android Studio 내장 JDK 사용 가능)
+- **동기화(웹 빌드 → Android로 복사)**:
+```bash
+npm run cap:sync:android
+```
+- **Android Studio 열기**:
+```bash
+npm run android:open
+```
+- **딥링크/OAuth**: Supabase Redirect URL에 `todox://auth-callback` 추가(위 “Google 로그인 활성화” 참고)
 
 ### Windows PowerShell에서 npm이 안 잡히는 경우
 이 프로젝트 환경에 따라 `npm`이 PATH에 없을 수 있어요. 그럴 땐 아래처럼 `npm.cmd`를 직접 호출하면 됩니다.

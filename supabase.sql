@@ -46,6 +46,19 @@ begin
   end if;
 end $$;
 
+-- 자신의 row만 삭제(계정 삭제 시 데이터 삭제용)
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies where schemaname = 'public' and tablename = 'todox_user_states' and policyname = 'todox_delete_own'
+  ) then
+    create policy todox_delete_own
+      on public.todox_user_states
+      for delete
+      using (auth.uid() = user_id);
+  end if;
+end $$;
+
 create index if not exists todox_user_states_updated_at_idx
   on public.todox_user_states (updated_at desc);
 

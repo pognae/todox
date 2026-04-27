@@ -18,6 +18,7 @@ import {
   isOverdue,
   todayISO,
 } from './dateUtils'
+import { mergePersistedState } from './mergeState'
 import { loadState, loadStateFromRemote, saveState } from './storage'
 import { onAuthStateChange } from './supabaseClient'
 import { computeNextDueDate } from './recurrence'
@@ -226,6 +227,11 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     }
   })
   const recentSubtaskRequestsRef = useRef<Map<string, number>>(new Map())
+  const latestStateRef = useRef<{ tasks: Task[]; projects: Project[]; settings: AppSettings } | null>(null)
+
+  useEffect(() => {
+    latestStateRef.current = { tasks, projects, settings }
+  }, [tasks, projects, settings])
 
   const applyExternalState = useCallback(
     (next: { tasks: Task[]; projects: Project[]; settings?: AppSettings }) => {
@@ -268,32 +274,37 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       const remote = await loadStateFromRemote()
       if (cancelled || !remote) return
 
-      // 원격 상태가 있으면 그걸 우선시
-      applyExternalState(remote)
+      // 원격 로드가 로컬 변경(방금 추가한 작업)을 덮어써서 잠깐 보였다가 사라지는 경우가 있어 병합 적용
+      applyExternalState(mergePersistedState({ tasks, projects, settings }, remote))
     })()
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // 로그인 상태가 바뀌면(익명→이메일 등) 새 계정의 원격 상태를 우선 적용
   // 원격 상태가 없으면 현재 로컬 상태를 새 계정에 시드(upsert)합니다.
   useEffect(() => {
-    const unsub = onAuthStateChange(() => {
+    const unsub = onAuthStateChange((evt) => {
+      // TOKEN_REFRESHED 등까지 전부 반응하면 원격 로드/적용이 반복되며 UI가 깜빡일 수 있음
+      if (evt !== 'SIGNED_IN' && evt !== 'SIGNED_OUT') return
       void (async () => {
+        const local = latestStateRef.current
+        if (!local) return
         const remote = await loadStateFromRemote()
         if (remote) {
-          applyExternalState(remote)
+          applyExternalState(mergePersistedState(local, remote))
         } else {
           // 새 계정(또는 빈 계정)이면 현재 상태를 저장해서 동기화 시작
-          saveState({ tasks, projects, settings })
+          saveState(local)
         }
       })()
     })
     return () => {
       unsub?.()
     }
-  }, [tasks, projects, settings])
+  }, [applyExternalState])
 
   useEffect(() => {
     saveState({ tasks, projects, settings })

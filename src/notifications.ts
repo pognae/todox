@@ -71,6 +71,33 @@ export function shouldFireReminder(now: Date, task: Task, settings: AppSettings)
   return { key: scheduledReminderKey(task, hm) }
 }
 
+export function computeNextReminderDelayMs(tasks: Task[], settings: AppSettings): number | null {
+  if (!settings.notificationsEnabled) return null
+  const perm = getNotificationPermission()
+  if (perm !== 'granted') return null
+
+  const now = new Date()
+  const nowMs = now.getTime()
+  const reminded = cleanupReminded(loadReminded(), nowMs)
+
+  let bestAt: number | null = null
+  for (const t of tasks) {
+    if (!t || t.completed || !t.dueDate) continue
+    const hm = t.dueTime ?? settings.defaultReminderTime
+    const key = scheduledReminderKey(t, hm)
+    if (reminded[key]) continue
+
+    const at = computeReminderAt(t, settings)
+    if (!at) continue
+    const atMs = at.getTime()
+    if (atMs <= nowMs) continue
+    if (bestAt === null || atMs < bestAt) bestAt = atMs
+  }
+
+  if (bestAt === null) return null
+  return Math.max(0, bestAt - nowMs)
+}
+
 export function markAndFireReminders(tasks: Task[], settings: AppSettings): void {
   if (!settings.notificationsEnabled) return
   const perm = getNotificationPermission()

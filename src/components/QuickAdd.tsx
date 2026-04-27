@@ -3,7 +3,7 @@ import { useTodo } from '../TodoContext'
 import type { QuickAddMode } from '../types'
 
 export function QuickAdd() {
-  const { addTask, viewTitle, settings } = useTodo()
+  const { addTask, viewTitle, settings, setSearchQuery } = useTodo()
   const [value, setValue] = useState('')
   const [mode, setMode] = useState<QuickAddMode>(settings.defaultQuickAddMode)
   const noteRef = useRef<HTMLTextAreaElement | null>(null)
@@ -27,6 +27,8 @@ export function QuickAdd() {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
+    // 검색어가 걸려 있으면 새로 추가한 작업이 바로 안 보일 수 있어 초기화
+    setSearchQuery('')
     addTask(value, { mode })
     setValue('')
   }

@@ -22,6 +22,15 @@ export type ConflictStatus =
   | { state: 'none' }
   | { state: 'detected'; remoteUpdatedAt: string; localChangedAt: number }
 
+type SyncErrorDetails = {
+  name?: string
+  message?: string
+  code?: string
+  details?: string
+  hint?: string
+  status?: number
+}
+
 export function loadState(): PersistedState | null {
   try {
     const raw = localStorage.getItem(KEY)
@@ -50,6 +59,49 @@ function setSyncStatus(next: SyncStatus) {
 function setConflictStatus(next: ConflictStatus) {
   conflictStatus = next
   for (const fn of conflictListeners) fn(next)
+}
+
+function extractErrorDetails(e: unknown): SyncErrorDetails {
+  if (!e) return { message: 'unknown error' }
+  if (e instanceof Error) {
+    const anyE = e as unknown as Record<string, unknown>
+    return {
+      name: e.name,
+      message: e.message,
+      code: typeof anyE.code === 'string' ? anyE.code : undefined,
+      details: typeof anyE.details === 'string' ? anyE.details : undefined,
+      hint: typeof anyE.hint === 'string' ? anyE.hint : undefined,
+      status: typeof anyE.status === 'number' ? anyE.status : undefined,
+    }
+  }
+  if (typeof e === 'string') return { message: e }
+  try {
+    return { message: JSON.stringify(e) }
+  } catch {
+    return { message: String(e) }
+  }
+}
+
+function formatErrorMessage(d: SyncErrorDetails): string {
+  const parts: string[] = []
+  if (d.message) parts.push(d.message)
+  if (d.code) parts.push(`code=${d.code}`)
+  if (typeof d.status === 'number') parts.push(`status=${d.status}`)
+  if (d.details) parts.push(d.details)
+  return parts.join(' | ') || 'sync failed'
+}
+
+async function devServerLog(payload: unknown): Promise<void> {
+  try {
+    if (!(import.meta as unknown as { env?: Record<string, string | undefined> }).env?.DEV) return
+    await fetch('/__todox_log', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch {
+    // ignore
+  }
 }
 
 export function getSyncStatus(): SyncStatus {
@@ -174,7 +226,12 @@ async function saveRemoteNow(state: PersistedState): Promise<void> {
     setConflictStatus({ state: 'none' })
     setSyncStatus({ state: 'saved', at: Date.now() })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'sync failed'
+    const details = extractErrorDetails(e)
+    const msg = formatErrorMessage(details)
+    // 브라우저 콘솔 + Vite dev server(터미널)로 모두 남겨서 원인 파악 가능하게
+    // eslint-disable-next-line no-console
+    console.error('[todox][sync] remote save failed', { details, raw: e })
+    void devServerLog({ type: 'sync_failed', at: new Date().toISOString(), details })
     setSyncStatus({ state: 'error', message: msg })
   }
 }

@@ -1,18 +1,43 @@
-import { useEffect } from 'react'
-import { markAndFireReminders } from '../notifications'
+import { useEffect, useRef } from 'react'
+import { computeNextReminderDelayMs, markAndFireReminders } from '../notifications'
 import { registerServiceWorker, tryRegisterBackgroundReminder, tryRegisterOneOffSync } from '../pwa'
 import { useTodo } from '../TodoContext'
 
 export function NotificationScheduler() {
   const { tasks, settings } = useTodo()
+  const timerRef = useRef<number | null>(null)
 
   useEffect(() => {
-    // 최초 1회 + 이후 30초마다 체크 (앱이 열려 있을 때만 동작)
+    // 1) 정확한 시각 알림: 다음 알림 시각까지 setTimeout
+    // 2) 폴백: 브라우저가 타이머를 지연시키는 경우를 대비해 30초 폴링도 유지
+    const clearTimer = () => {
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+
+    const scheduleNext = () => {
+      clearTimer()
+      const delay = computeNextReminderDelayMs(tasks, settings)
+      if (delay == null) return
+      // setTimeout은 아주 긴 지연이 불안정할 수 있어 상한을 둠(최대 24h)
+      const capped = Math.min(delay, 24 * 60 * 60 * 1000)
+      timerRef.current = window.setTimeout(() => {
+        markAndFireReminders(tasks, settings)
+        scheduleNext()
+      }, capped)
+    }
+
     markAndFireReminders(tasks, settings)
+    scheduleNext()
     const id = window.setInterval(() => {
       markAndFireReminders(tasks, settings)
+      scheduleNext()
     }, 30_000)
-    return () => window.clearInterval(id)
+
+    return () => {
+      window.clearInterval(id)
+      clearTimer()
+    }
   }, [tasks, settings])
 
   useEffect(() => {

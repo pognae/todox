@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useTodo } from '../TodoContext'
+import { useAuth } from '../useAuth'
 
 function NavButton({
   active,
@@ -32,6 +33,7 @@ function NavButton({
 
 export function Sidebar() {
   const { view, setView, projects, addProject, deleteProject, allTags } = useTodo()
+  const { userId } = useAuth()
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
 
@@ -46,7 +48,13 @@ export function Sidebar() {
   return (
     <aside className="flex h-full w-[280px] shrink-0 flex-col border-r border-neutral-200 bg-sidebar">
       <div className="flex items-center gap-2 px-4 py-5">
-        <span className="text-2xl font-bold tracking-tight text-todoist-red">todox</span>
+        <span
+          className={`text-2xl font-bold tracking-tight ${
+            userId ? 'text-todoist-red' : 'text-sky-600'
+          }`}
+        >
+          todox
+        </span>
       </div>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-4">

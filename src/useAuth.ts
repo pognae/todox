@@ -20,7 +20,7 @@ export function useAuth(): { userId: string | null; ready: boolean } {
       setReady(true)
     })()
 
-    const unsub = onAuthStateChange((uid) => {
+    const unsub = onAuthStateChange((_evt, uid) => {
       if (!mounted) return
       setUserId(uid)
       setReady(true)

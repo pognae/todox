@@ -61,11 +61,11 @@ export function SyncBanner() {
             : ''
 
   return (
-    <div className={`pointer-events-auto sticky top-0 z-50 border-b ${tone}`}>
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
+    <div className={`pointer-events-auto fixed inset-x-0 top-0 z-50 border-b ${tone}`}>
+      <div className="mx-auto flex max-w-5xl flex-nowrap items-center justify-between gap-2 px-4 py-2 text-sm">
         <span className="min-w-0 flex-1 truncate">{label}</span>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-nowrap items-center gap-2">
           {conflict.state === 'detected' ? (
             <>
               <button
