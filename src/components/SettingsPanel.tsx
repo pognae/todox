@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTodo } from '../TodoContext'
 import { deleteAccountData, getSupabaseClient, signInWithGoogle, signOut } from '../supabaseClient'
+import { initWebPush, registerWebPushToken } from '../pushWeb'
 import {
   getConflictStatus,
   getSyncStatus,
@@ -20,6 +21,8 @@ export function SettingsPanel() {
   const [email, setEmail] = useState('')
   const [authMsg, setAuthMsg] = useState<string | null>(null)
   const [authBusy, setAuthBusy] = useState(false)
+  const [pushMsg, setPushMsg] = useState<string | null>(null)
+  const [pushBusy, setPushBusy] = useState(false)
   const [sync, setSync] = useState<SyncStatus>(() => getSyncStatus())
   const [conflict, setConflict] = useState<ConflictStatus>(() => getConflictStatus())
 
@@ -272,6 +275,46 @@ export function SettingsPanel() {
           <span className="text-xs text-neutral-500">
             권한: {permission === 'unsupported' ? '미지원' : permission}
           </span>
+        </div>
+
+        <div className="mt-4 rounded-md border border-neutral-100 bg-white p-3">
+          <h3 className="mb-2 text-xs font-semibold text-neutral-700">서버 푸시(최종형)</h3>
+          <p className="mb-3 text-xs text-neutral-500">
+            웹/모바일에서 앱이 꺼져 있어도 알림을 받으려면 푸시 토큰을 등록해야 합니다.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={pushBusy}
+              className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+              onClick={async () => {
+                setPushMsg(null)
+                setPushBusy(true)
+                try {
+                  const st = await initWebPush()
+                  if (!st.configured) {
+                    setPushMsg(
+                      'Firebase Web Push 설정이 없습니다. (VITE_FIREBASE_* / VITE_FIREBASE_VAPID_KEY)',
+                    )
+                    return
+                  }
+                  if (!st.supported) {
+                    setPushMsg('이 브라우저는 Web Push를 지원하지 않습니다.')
+                    return
+                  }
+                  const r = await registerWebPushToken()
+                  setPushMsg(r.ok ? '웹 푸시 토큰을 등록했습니다.' : `등록 실패: ${r.reason ?? 'unknown'}`)
+                } catch (e) {
+                  setPushMsg(e instanceof Error ? e.message : '푸시 등록 실패')
+                } finally {
+                  setPushBusy(false)
+                }
+              }}
+            >
+              웹 푸시 토큰 등록
+            </button>
+          </div>
+          {pushMsg ? <p className="mt-2 text-xs text-neutral-600">{pushMsg}</p> : null}
         </div>
       </section>
 

@@ -246,6 +246,12 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [settings, setSettings] = useState<AppSettings>(() => {
     const s = hydrated?.settings
+    let tzOff: number | undefined = undefined
+    try {
+      tzOff = new Date().getTimezoneOffset()
+    } catch {
+      tzOff = undefined
+    }
     return {
       defaultReminderTime: s?.defaultReminderTime ?? '09:00',
       notificationsEnabled: s?.notificationsEnabled ?? false,
@@ -253,6 +259,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       defaultQuickAddMode: s?.defaultQuickAddMode ?? 'task',
       detailEditorForTodo: (s?.detailEditorForTodo as DetailEditorPreference | undefined) ?? 'todo',
       detailEditorForNote: (s?.detailEditorForNote as DetailEditorPreference | undefined) ?? 'auto',
+      timezoneOffsetMinutes: s?.timezoneOffsetMinutes ?? tzOff,
     }
   })
   const recentSubtaskRequestsRef = useRef<Map<string, number>>(new Map())
@@ -346,6 +353,26 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     saveState({ tasks, projects, settings, bookmarks })
   }, [tasks, projects, settings, bookmarks])
+
+  // timezone offset은 서버 푸시 시각 계산에 필요하므로 주기적으로 최신값을 유지
+  useEffect(() => {
+    let cancelled = false
+    const tick = () => {
+      if (cancelled) return
+      try {
+        const off = new Date().getTimezoneOffset()
+        setSettings((s) => (s.timezoneOffsetMinutes === off ? s : { ...s, timezoneOffsetMinutes: off }))
+      } catch {
+        // ignore
+      }
+    }
+    tick()
+    const id = window.setInterval(tick, 6 * 60 * 60 * 1000)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+  }, [])
 
   // 북마크는 확장프로그램(로컬)과도 동기화해서 로그인 시 내려받은 북마크가 브라우저에도 바로 보이게 합니다.
   useEffect(() => {

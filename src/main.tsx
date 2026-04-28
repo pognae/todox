@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { registerServiceWorker } from './pwa'
 import { initSupabaseAuthDeepLinkListener, initSupabaseAuthWebRedirectHandler } from './supabaseClient'
+import { initNativePushRegistration } from './pushNative'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -19,3 +20,6 @@ void initSupabaseAuthWebRedirectHandler()
 
 // Native(Capacitor): OAuth 딥링크로 돌아왔을 때 세션 저장
 initSupabaseAuthDeepLinkListener()
+
+// Native(Capacitor): 푸시 토큰 등록(FCM/APNs)
+void initNativePushRegistration()

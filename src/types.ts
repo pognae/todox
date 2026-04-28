@@ -63,6 +63,8 @@ export interface AppSettings {
   detailEditorForTodo: DetailEditorPreference
   /** 노트 타입 편집기 */
   detailEditorForNote: DetailEditorPreference
+  /** 서버 푸시용: 이 기기의 timezone offset (Date.getTimezoneOffset()) */
+  timezoneOffsetMinutes?: number
 }
 
 export type View =

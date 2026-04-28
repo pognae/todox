@@ -86,6 +86,40 @@ npm run dev
 >   - `VITE_SUPABASE_URL`
 >   - `VITE_SUPABASE_ANON_KEY`
 
+### 서버 푸시(FCM) 설정(최종형 알림)
+
+서버 푸시는 Firebase(FCM) 기반으로 동작합니다.
+
+#### 1) 웹(Web Push)용 Firebase 환경변수
+
+GitHub Actions Secrets에 아래를 추가하세요(배포 빌드에 포함됩니다).
+
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_VAPID_KEY`
+
+> 위 값이 있으면 빌드 시 `dist/firebase-messaging-sw.js`가 자동 생성됩니다. (Vite 플러그인)
+
+#### 2) Supabase Edge Function 환경변수
+
+Supabase Dashboard → Edge Functions → Secrets(환경변수)에 아래를 넣어야 합니다.
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `FIREBASE_SERVICE_ACCOUNT_JSON` (Firebase 서비스 계정 JSON 전체를 문자열로)
+
+#### 3) Edge Function 배포/스케줄
+
+- 함수 파일: `supabase/functions/send-reminders/index.ts`
+- Supabase Scheduled Functions로 1분마다 호출하도록 스케줄을 설정하세요.
+
+#### 4) 앱에서 토큰 등록
+
+설정 → 알림 → **서버 푸시(최종형) → 웹 푸시 토큰 등록** 버튼으로 토큰을 등록합니다.\n
+
 > 참고: 리포지토리 이름이 `todox`가 아니라면 `vite.config.ts`의 `base`와, 확장프로그램 `manifest.json`의 `https://*.github.io/todox/*` 경로를 함께 바꿔야 합니다.
 
 ### 확장프로그램(배포 도메인에서 브리지 동작)

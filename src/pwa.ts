@@ -10,6 +10,18 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 }
 
+export async function registerFcmServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (typeof window === 'undefined') return null
+  if (!('serviceWorker' in navigator)) return null
+  try {
+    // FCM은 기본적으로 firebase-messaging-sw.js를 찾지만, 우리 앱은 sw.js를 따로 쓰므로 별도 등록
+    const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    return reg
+  } catch {
+    return null
+  }
+}
+
 export async function tryRegisterBackgroundReminder(reg: ServiceWorkerRegistration): Promise<
   'registered' | 'unsupported' | 'denied'
 > {

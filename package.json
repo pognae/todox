@@ -18,7 +18,9 @@
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",
     "@capacitor/local-notifications": "^8.0.2",
+    "@capacitor/push-notifications": "^8.0.3",
     "@supabase/supabase-js": "^2.104.1",
+    "firebase": "^12.12.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-markdown": "^10.1.0"
