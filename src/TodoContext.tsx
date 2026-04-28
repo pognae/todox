@@ -783,7 +783,8 @@ export function TodoProvider({ children }: { children: ReactNode }) {
 
     if (view.type === 'inbox') {
       return {
-        baseVisibleTasks: allSorted.filter((t) => t.projectId === INBOX_ID),
+        // 받은 편지함: 프로젝트와 무관하게 전체 작업/노트를 보여줌
+        baseVisibleTasks: allSorted,
         viewTitle: '받은 편지함',
       }
     }
