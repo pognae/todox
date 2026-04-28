@@ -133,3 +133,7 @@ Supabase Dashboard → Edge Functions → Secrets(환경변수)에 아래를 넣
 
 
 
+
+
+
+
