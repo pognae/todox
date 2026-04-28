@@ -6,6 +6,13 @@ import { Browser } from '@capacitor/browser'
 const NATIVE_OAUTH_REDIRECT = 'todox://auth-callback'
 const AUTH_DISABLED_KEY = 'todox-auth-disabled'
 
+function webAuthRedirectTo(): string {
+  // GitHub Pages(project pages)에서는 origin만 쓰면 `/todox/` 경로가 빠져 OAuth가 실패할 수 있음.
+  // Vite의 BASE_URL은 dev에서는 `/`, Pages 빌드에서는 `/todox/` 형태.
+  const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/'
+  return new URL(base, window.location.origin).toString()
+}
+
 function getEnv(name: 'VITE_SUPABASE_URL' | 'VITE_SUPABASE_ANON_KEY'): string | null {
   const v = (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.[name]
   return v ?? null
@@ -131,7 +138,7 @@ export async function signInWithMagicLink(email: string): Promise<void> {
     email: trimmed,
     options: {
       // Vite SPA: 현재 origin으로 돌아오면 됨
-      emailRedirectTo: window.location.origin,
+      emailRedirectTo: webAuthRedirectTo(),
     },
   })
   if (error) throw error
@@ -163,7 +170,7 @@ export async function signInWithGoogle(loginHintEmail?: string): Promise<void> {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: window.location.origin,
+      redirectTo: webAuthRedirectTo(),
       queryParams: login_hint ? { login_hint } : undefined,
     },
   })
