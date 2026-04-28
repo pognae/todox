@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTodo } from '../TodoContext'
-import { deleteAccountData, signInWithGoogle, signOut } from '../supabaseClient'
+import { deleteAccountData, getSupabaseClient, signInWithGoogle, signOut } from '../supabaseClient'
 import {
   getConflictStatus,
   getSyncStatus,
@@ -187,6 +187,13 @@ export function SettingsPanel() {
             </div>
           ) : (
             <>
+              {!getSupabaseClient() ? (
+                <p className="mb-2 text-xs text-amber-700">
+                  Supabase 설정이 없어 Google 로그인을 시작할 수 없습니다. (배포 환경이면 GitHub Actions Secrets에
+                  <code className="mx-1 rounded bg-neutral-100 px-1">VITE_SUPABASE_URL</code>,
+                  <code className="mx-1 rounded bg-neutral-100 px-1">VITE_SUPABASE_ANON_KEY</code>를 추가하세요.)
+                </p>
+              ) : null}
               <label className="text-xs text-neutral-500">Google 계정 이메일</label>
               <div className="flex gap-2">
                 <input
@@ -209,8 +216,14 @@ export function SettingsPanel() {
                   setAuthBusy(true)
                   try {
                     await signInWithGoogle(email)
-                  } catch {
-                    setAuthMsg('구글 로그인 시작에 실패했습니다. Supabase OAuth 설정을 확인해주세요.')
+                  } catch (e) {
+                    const msg =
+                      e instanceof Error
+                        ? e.message
+                        : typeof e === 'string'
+                          ? e
+                          : '구글 로그인 시작에 실패했습니다.'
+                    setAuthMsg(`구글 로그인 시작에 실패했습니다: ${msg}`)
                   } finally {
                     setAuthBusy(false)
                   }
