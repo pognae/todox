@@ -31,7 +31,13 @@ function NavButton({
   )
 }
 
-export function Sidebar() {
+export function Sidebar({
+  mobileOpen = false,
+  onMobileClose,
+}: {
+  mobileOpen?: boolean
+  onMobileClose?: () => void
+}) {
   const { view, setView, projects, addProject, deleteProject, allTags } = useTodo()
   const { userId } = useAuth()
   const [adding, setAdding] = useState(false)
@@ -45,8 +51,28 @@ export function Sidebar() {
     setAdding(false)
   }
 
+  const closeMobile = () => onMobileClose?.()
+
+  const go = (next: Parameters<typeof setView>[0]) => {
+    setView(next)
+    closeMobile()
+  }
+
   return (
-    <aside className="flex h-full w-[280px] shrink-0 flex-col border-r border-neutral-200 bg-sidebar">
+    <>
+      {mobileOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/30 md:hidden"
+          aria-label="메뉴 닫기"
+          onClick={closeMobile}
+        />
+      ) : null}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-[280px] shrink-0 flex-col border-r border-neutral-200 bg-sidebar transition-transform md:static md:translate-x-0 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
       <div className="flex items-center gap-2 px-4 py-5">
         <span
           className={`text-2xl font-bold tracking-tight ${
@@ -55,12 +81,22 @@ export function Sidebar() {
         >
           todox
         </span>
+        <button
+          type="button"
+          className="ml-auto rounded-md p-2 text-neutral-500 hover:bg-neutral-200/60 md:hidden"
+          aria-label="메뉴 닫기"
+          onClick={closeMobile}
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-4">
         <NavButton
           active={view.type === 'inbox'}
-          onClick={() => setView({ type: 'inbox' })}
+          onClick={() => go({ type: 'inbox' })}
           label="받은 편지함"
           icon={
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -70,7 +106,7 @@ export function Sidebar() {
         />
         <NavButton
           active={view.type === 'today'}
-          onClick={() => setView({ type: 'today' })}
+          onClick={() => go({ type: 'today' })}
           label="오늘"
           icon={
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -80,7 +116,7 @@ export function Sidebar() {
         />
         <NavButton
           active={view.type === 'upcoming'}
-          onClick={() => setView({ type: 'upcoming' })}
+          onClick={() => go({ type: 'upcoming' })}
           label="다가오는 날"
           icon={
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -92,7 +128,7 @@ export function Sidebar() {
           active={view.type === 'calendar'}
           onClick={() => {
             const t = new Date()
-            setView({ type: 'calendar', year: t.getFullYear(), month: t.getMonth() + 1 })
+            go({ type: 'calendar', year: t.getFullYear(), month: t.getMonth() + 1 })
           }}
           label="캘린더"
           icon={
@@ -103,7 +139,7 @@ export function Sidebar() {
         />
         <NavButton
           active={view.type === 'bookmarks'}
-          onClick={() => setView({ type: 'bookmarks' })}
+          onClick={() => go({ type: 'bookmarks' })}
           label="북마크"
           icon={
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -118,7 +154,7 @@ export function Sidebar() {
         />
         <NavButton
           active={view.type === 'settings'}
-          onClick={() => setView({ type: 'settings' })}
+          onClick={() => go({ type: 'settings' })}
           label="설정"
           icon={
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -141,7 +177,7 @@ export function Sidebar() {
           <div key={p.id} className="group flex items-center gap-1">
             <button
               type="button"
-              onClick={() => setView({ type: 'project', projectId: p.id })}
+              onClick={() => go({ type: 'project', projectId: p.id })}
               className={`flex min-w-0 flex-1 items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
                 view.type === 'project' && view.projectId === p.id
                   ? 'bg-red-50 font-medium text-todoist-red'
@@ -231,6 +267,7 @@ export function Sidebar() {
           </ul>
         )}
       </nav>
-    </aside>
+      </aside>
+    </>
   )
 }

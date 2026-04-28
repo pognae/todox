@@ -23,7 +23,7 @@ function groupUpcoming(tasks: Task[]): Map<string, Task[]> {
   return ordered
 }
 
-export function MainContent() {
+export function MainContent({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
   const { viewTitle, visibleTasks, view, searchQuery, setSearchQuery } = useTodo()
 
   const upcomingGroups = useMemo(() => {
@@ -32,9 +32,21 @@ export function MainContent() {
   }, [view.type, visibleTasks])
 
   return (
-    <main className="min-w-0 flex-1 overflow-y-auto bg-surface px-6 py-6 md:px-10">
+    <main className="min-w-0 flex-1 overflow-y-auto bg-surface px-4 py-4 sm:px-6 sm:py-6 md:px-10">
       <header className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold text-neutral-800 md:text-2xl">{viewTitle}</h1>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-white p-2 text-neutral-700 hover:bg-neutral-50 md:hidden"
+            aria-label="메뉴 열기"
+            onClick={() => onOpenSidebar?.()}
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <h1 className="text-xl font-semibold text-neutral-800 md:text-2xl">{viewTitle}</h1>
+        </div>
         {view.type !== 'settings' && view.type !== 'bookmarks' && (
           <div className="relative w-full sm:max-w-xs">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
