@@ -104,6 +104,34 @@ export function initSupabaseAuthDeepLinkListener(): (() => void) | null {
   }
 }
 
+/**
+ * Web(Pages 포함): OAuth 리다이렉트로 돌아온 `?code=...`를 교환해 세션을 저장합니다.
+ * - supabase-js의 detectSessionInUrl이 환경에 따라 실패할 수 있어(특히 Pages) 수동으로 보강합니다.
+ */
+export async function initSupabaseAuthWebRedirectHandler(): Promise<void> {
+  if (isNativePlatform()) return
+  if (typeof window === 'undefined') return
+  if (isAuthDisabled()) return
+  const supabase = getSupabaseClient()
+  if (!supabase) return
+
+  try {
+    const u = new URL(window.location.href)
+    const code = u.searchParams.get('code')
+    if (!code) return
+    enableRemoteAuth()
+    await supabase.auth.exchangeCodeForSession(code)
+
+    // code 파라미터 제거(새로고침 시 재교환 방지)
+    u.searchParams.delete('code')
+    u.searchParams.delete('state')
+    const clean = `${u.pathname}${u.search}${u.hash}`
+    window.history.replaceState({}, '', clean)
+  } catch {
+    // ignore
+  }
+}
+
 export async function ensureSignedInAnonymously(): Promise<{ userId: string } | null> {
   const supabase = getSupabaseClient()
   if (!supabase) return null
