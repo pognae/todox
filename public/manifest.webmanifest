@@ -2,14 +2,14 @@
   "name": "todox",
   "short_name": "todox",
   "description": "Todoist 스타일의 로컬 할 일 앱",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#db4c3f",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "app-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

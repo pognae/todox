@@ -3,7 +3,8 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   if (!('serviceWorker' in navigator)) return null
 
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js')
+    const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/'
+    const reg = await navigator.serviceWorker.register(`${base}sw.js`)
     return reg
   } catch {
     return null
@@ -15,7 +16,8 @@ export async function registerFcmServiceWorker(): Promise<ServiceWorkerRegistrat
   if (!('serviceWorker' in navigator)) return null
   try {
     // FCM은 기본적으로 firebase-messaging-sw.js를 찾지만, 우리 앱은 sw.js를 따로 쓰므로 별도 등록
-    const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    const base = (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/'
+    const reg = await navigator.serviceWorker.register(`${base}firebase-messaging-sw.js`)
     return reg
   } catch {
     return null
