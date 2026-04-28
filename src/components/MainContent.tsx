@@ -6,6 +6,7 @@ import type { Task } from '../types'
 import { CalendarMonth } from './CalendarMonth'
 import { QuickAdd } from './QuickAdd'
 import { BookmarksPanel } from './BookmarksPanel'
+import { NotesPanel } from './NotesPanel'
 import { SettingsPanel } from './SettingsPanel'
 import { TaskItem } from './TaskItem'
 
@@ -68,6 +69,8 @@ export function MainContent({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
 
       {view.type === 'settings' ? (
         <SettingsPanel />
+      ) : view.type === 'notes' ? (
+        <NotesPanel />
       ) : view.type === 'bookmarks' ? (
         <BookmarksPanel />
       ) : view.type === 'calendar' ? (

@@ -792,6 +792,10 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       return { baseVisibleTasks: [], viewTitle: '캘린더' }
     }
 
+    if (view.type === 'notes') {
+      return { baseVisibleTasks: [], viewTitle: '노트' }
+    }
+
     if (view.type === 'bookmarks') {
       return { baseVisibleTasks: [], viewTitle: '북마크' }
     }

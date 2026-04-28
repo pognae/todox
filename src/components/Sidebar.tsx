@@ -138,6 +138,22 @@ export function Sidebar({
           }
         />
         <NavButton
+          active={view.type === 'notes'}
+          onClick={() => go({ type: 'notes' })}
+          label="노트"
+          icon={
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M7 3h7l3 3v15a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"
+              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6M9 17h6M9 9h3" />
+            </svg>
+          }
+        />
+        <NavButton
           active={view.type === 'bookmarks'}
           onClick={() => go({ type: 'bookmarks' })}
           label="북마크"

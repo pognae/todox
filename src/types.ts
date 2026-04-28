@@ -76,6 +76,7 @@ export type View =
   | { type: 'project'; projectId: string }
   /** month: 1–12 */
   | { type: 'calendar'; year: number; month: number }
+  | { type: 'notes' }
   | { type: 'bookmarks' }
   | { type: 'settings' }
   /** 정규화된 태그 문자열(소문자 등) */
