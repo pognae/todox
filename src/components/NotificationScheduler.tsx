@@ -2,12 +2,16 @@ import { useEffect, useRef } from 'react'
 import { computeNextReminderDelayMs, markAndFireReminders } from '../notifications'
 import { registerServiceWorker, tryRegisterBackgroundReminder, tryRegisterOneOffSync } from '../pwa'
 import { useTodo } from '../TodoContext'
+import { rescheduleNativeNotifications } from '../nativeNotifications'
+import { Capacitor } from '@capacitor/core'
 
 export function NotificationScheduler() {
   const { tasks, settings } = useTodo()
   const timerRef = useRef<number | null>(null)
+  const nativeDigestRef = useRef<string>('')
 
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) return
     // 1) 정확한 시각 알림: 다음 알림 시각까지 setTimeout
     // 2) 폴백: 브라우저가 타이머를 지연시키는 경우를 대비해 30초 폴링도 유지
     const clearTimer = () => {
@@ -41,6 +45,7 @@ export function NotificationScheduler() {
   }, [tasks, settings])
 
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) return
     // 알림 설정이 켜져 있고 권한이 있는 경우: 백그라운드 스케줄 등록 시도
     if (!settings.notificationsEnabled) return
     if (typeof window === 'undefined' || !('Notification' in window)) return
@@ -60,6 +65,34 @@ export function NotificationScheduler() {
       cancelled = true
     }
   }, [settings.notificationsEnabled])
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return
+    let cancelled = false
+    const digest = JSON.stringify({
+      enabled: settings.notificationsEnabled,
+      defaultReminderTime: settings.defaultReminderTime,
+      // 알림에 영향을 주는 필드만 추출(전체 tasks를 그대로 쓰면 너무 자주 재스케줄됨)
+      tasks: tasks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        completed: t.completed,
+        dueDate: t.dueDate,
+        dueTime: t.dueTime,
+      })),
+    })
+    if (digest === nativeDigestRef.current) return
+    nativeDigestRef.current = digest
+
+    const t = window.setTimeout(() => {
+      if (cancelled) return
+      void rescheduleNativeNotifications(tasks, settings)
+    }, 700)
+    return () => {
+      cancelled = true
+      window.clearTimeout(t)
+    }
+  }, [tasks, settings])
 
   return null
 }

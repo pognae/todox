@@ -107,6 +107,22 @@ export function markAndFireReminders(tasks: Task[], settings: AppSettings): void
   let reminded = cleanupReminded(loadReminded(), now.getTime())
   let changed = false
 
+  const fireNow = async (title: string, body: string) => {
+    try {
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration()
+        if (reg) {
+          await reg.showNotification(title, { body })
+          return
+        }
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line no-new
+    new Notification(title, { body })
+  }
+
   for (const t of tasks) {
     const fire = shouldFireReminder(now, t, settings)
     if (!fire) continue
@@ -117,8 +133,7 @@ export function markAndFireReminders(tasks: Task[], settings: AppSettings): void
     if (t.dueDate && t.dueDate !== todayISO()) bodyParts.push(`(${t.dueDate})`)
     const body = bodyParts.join(' ')
 
-    // eslint-disable-next-line no-new
-    new Notification(title, { body })
+    void fireNow(title, body)
 
     reminded[fire.key] = now.getTime()
     changed = true

@@ -21,10 +21,12 @@ import {
 } from './dateUtils'
 import { mergePersistedState } from './mergeState'
 import { loadState, loadStateFromRemote, saveState } from './storage'
-import { onAuthStateChange } from './supabaseClient'
+import { Capacitor } from '@capacitor/core'
+import { getSupabaseClient, onAuthStateChange } from './supabaseClient'
+import { requestNativeNotificationPermission } from './nativeNotifications'
 import { isNoteLikeTask } from './noteUtils'
 import { computeNextDueDate } from './recurrence'
-import { pushBookmarks } from './bookmarksBridge'
+import { onBookmarksPush, pushBookmarks, requestBookmarks } from './bookmarksBridge'
 import { collectAllTagsFromTasks, normalizeTag, parseQuickAdd, taskMatchesSearch } from './tagUtils'
 import type {
   AppSettings,
@@ -254,12 +256,16 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     }
   })
   const recentSubtaskRequestsRef = useRef<Map<string, number>>(new Map())
+  const [authUserId, setAuthUserId] = useState<string | null>(null)
+  const bookmarksJsonRef = useRef<string>(JSON.stringify(bookmarks))
+  const pushedToExtensionJsonRef = useRef<string>('')
   const latestStateRef = useRef<{ tasks: Task[]; projects: Project[]; settings: AppSettings; bookmarks: Bookmark[] } | null>(
     null,
   )
 
   useEffect(() => {
     latestStateRef.current = { tasks, projects, settings, bookmarks }
+    bookmarksJsonRef.current = JSON.stringify(bookmarks)
   }, [tasks, projects, settings, bookmarks])
 
   const applyExternalState = useCallback(
@@ -316,9 +322,10 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   // 로그인 상태가 바뀌면(익명→이메일 등) 새 계정의 원격 상태를 우선 적용
   // 원격 상태가 없으면 현재 로컬 상태를 새 계정에 시드(upsert)합니다.
   useEffect(() => {
-    const unsub = onAuthStateChange((evt) => {
+    const unsub = onAuthStateChange((evt, uid) => {
       // TOKEN_REFRESHED 등까지 전부 반응하면 원격 로드/적용이 반복되며 UI가 깜빡일 수 있음
       if (evt !== 'SIGNED_IN' && evt !== 'SIGNED_OUT') return
+      setAuthUserId(uid)
       void (async () => {
         const local = latestStateRef.current
         if (!local) return
@@ -343,8 +350,67 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   // 북마크는 확장프로그램(로컬)과도 동기화해서 로그인 시 내려받은 북마크가 브라우저에도 바로 보이게 합니다.
   useEffect(() => {
     if (typeof window === 'undefined') return
+    const json = bookmarksJsonRef.current
+    if (json === pushedToExtensionJsonRef.current) return
+    pushedToExtensionJsonRef.current = json
     void pushBookmarks(bookmarks, 350)
   }, [bookmarks])
+
+  // 확장프로그램 → 앱: 북마크 변경(PUSH)을 앱 전체에서 받아서 즉시 상태에 반영(=원격 동기화 경로로 자동 포함)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    let alive = true
+
+    void requestBookmarks(650).then((b) => {
+      if (!alive || !b) return
+      const nextJson = JSON.stringify(b)
+      if (nextJson === bookmarksJsonRef.current) return
+      setBookmarks(b)
+    })
+
+    const off = onBookmarksPush((next) => {
+      const nextJson = JSON.stringify(next)
+      if (nextJson === bookmarksJsonRef.current) return
+      setBookmarks(next)
+    })
+    return () => {
+      alive = false
+      off()
+    }
+  }, [])
+
+  // Supabase Realtime: 로그인된 계정의 상태 변경을 구독해(작업/노트/북마크 전체) 실시간 반영
+  useEffect(() => {
+    const supabase = getSupabaseClient()
+    if (!supabase) return
+    if (!authUserId) return
+
+    const channel = supabase
+      .channel(`todox_user_states:${authUserId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'todox_user_states',
+          filter: `user_id=eq.${authUserId}`,
+        },
+        () => {
+          void (async () => {
+            const local = latestStateRef.current
+            if (!local) return
+            const remote = await loadStateFromRemote()
+            if (!remote) return
+            applyExternalState(mergePersistedState(local, remote))
+          })()
+        },
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [authUserId, applyExternalState])
 
   useEffect(() => {
     setProjects((p) => (p.some((x) => x.id === INBOX_ID) ? p : [defaultProjects[0], ...p]))
@@ -752,6 +818,15 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const requestNotificationPermission = useCallback(async () => {
+    // Native(Capacitor): Local Notifications 권한 요청
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const res = await requestNativeNotificationPermission()
+        return res === 'unsupported' ? 'unsupported' : res
+      }
+    } catch {
+      // ignore
+    }
     if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported'
     try {
       return await Notification.requestPermission()
