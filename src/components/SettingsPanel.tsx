@@ -12,7 +12,7 @@ import {
   type SyncStatus,
 } from '../storage'
 import { useAuth } from '../useAuth'
-import type { QuickAddMode } from '../types'
+import type { DetailEditorPreference, QuickAddMode } from '../types'
 
 export function SettingsPanel() {
   const { settings, updateSettings, requestNotificationPermission, tasks, projects, applyExternalState } = useTodo()
@@ -288,6 +288,65 @@ export function SettingsPanel() {
               {label}
             </button>
           ))}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-sm font-semibold text-neutral-800">목록 클릭 편집기</h2>
+        <p className="mb-4 text-xs text-neutral-500">
+          목록에서 항목을 클릭했을 때 어떤 편집기를 열지 선택합니다. 노트는 빠른 추가로 만든 날짜 형식 제목의 항목을 의미합니다.
+        </p>
+
+        <div className="mb-4">
+          <span className="mb-2 block text-xs font-semibold text-neutral-700">작업</span>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { id: 'auto' as const, label: '자동(작업 편집기)' },
+                { id: 'todo' as const, label: '작업 편집기' },
+                { id: 'note' as const, label: '노트 편집기' },
+              ] satisfies { id: DetailEditorPreference; label: string }[]
+            ).map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => updateSettings({ detailEditorForTodo: id })}
+                className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+                  settings.detailEditorForTodo === id
+                    ? 'border-todoist-red bg-red-50 text-todoist-red'
+                    : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <span className="mb-2 block text-xs font-semibold text-neutral-700">노트</span>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { id: 'auto' as const, label: '자동(노트 편집기)' },
+                { id: 'todo' as const, label: '작업 편집기' },
+                { id: 'note' as const, label: '노트 편집기' },
+              ] satisfies { id: DetailEditorPreference; label: string }[]
+            ).map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => updateSettings({ detailEditorForNote: id })}
+                className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+                  settings.detailEditorForNote === id
+                    ? 'border-todoist-red bg-red-50 text-todoist-red'
+                    : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 

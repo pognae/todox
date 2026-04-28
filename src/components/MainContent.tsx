@@ -5,6 +5,7 @@ import { useTodo } from '../TodoContext'
 import type { Task } from '../types'
 import { CalendarMonth } from './CalendarMonth'
 import { QuickAdd } from './QuickAdd'
+import { BookmarksPanel } from './BookmarksPanel'
 import { SettingsPanel } from './SettingsPanel'
 import { TaskItem } from './TaskItem'
 
@@ -34,7 +35,7 @@ export function MainContent() {
     <main className="min-w-0 flex-1 overflow-y-auto bg-surface px-6 py-6 md:px-10">
       <header className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold text-neutral-800 md:text-2xl">{viewTitle}</h1>
-        {view.type !== 'settings' && (
+        {view.type !== 'settings' && view.type !== 'bookmarks' && (
           <div className="relative w-full sm:max-w-xs">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -55,6 +56,8 @@ export function MainContent() {
 
       {view.type === 'settings' ? (
         <SettingsPanel />
+      ) : view.type === 'bookmarks' ? (
+        <BookmarksPanel />
       ) : view.type === 'calendar' ? (
         <>
           <QuickAdd />

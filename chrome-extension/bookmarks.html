@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>todox 북마크</title>
+    <link rel="stylesheet" href="ui.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <div class="title">todox 북마크</div>
+          <div class="subtitle">확장프로그램에서 저장한 목록</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="addCurrent" class="btn">현재 탭 추가</button>
+        <button id="clearAll" class="btn btnDanger">전체 삭제</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="toolbar">
+        <input id="q" class="search" type="search" placeholder="검색 (제목/URL)" />
+        <div id="meta" class="meta"></div>
+      </div>
+
+      <div id="empty" class="empty" hidden>
+        아직 북마크가 없습니다. 확장프로그램 아이콘을 클릭해 현재 탭을 저장해 보세요.
+      </div>
+
+      <ul id="list" class="list" aria-label="북마크 목록"></ul>
+    </main>
+
+    <template id="rowTpl">
+      <li class="row">
+        <div class="rowMain">
+          <a class="rowTitle" target="_blank" rel="noreferrer"></a>
+          <div class="rowUrl"></div>
+          <div class="rowMeta"></div>
+        </div>
+        <div class="rowActions">
+          <button class="iconBtn copyBtn" title="URL 복사" aria-label="URL 복사">복사</button>
+          <button class="iconBtn delBtn" title="삭제" aria-label="삭제">삭제</button>
+        </div>
+      </li>
+    </template>
+
+    <script type="module" src="bookmarks.js"></script>
+  </body>
+</html>
+

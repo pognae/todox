@@ -16,14 +16,23 @@ import {
   formatTodayNoteTitle,
   isDueToday,
   isOverdue,
+  parseISODate,
   todayISO,
 } from './dateUtils'
 import { mergePersistedState } from './mergeState'
 import { loadState, loadStateFromRemote, saveState } from './storage'
 import { onAuthStateChange } from './supabaseClient'
+import { isNoteLikeTask } from './noteUtils'
 import { computeNextDueDate } from './recurrence'
 import { collectAllTagsFromTasks, normalizeTag, parseQuickAdd, taskMatchesSearch } from './tagUtils'
-import type { AppSettings, Project, QuickAddMode, Task, View } from './types'
+import type {
+  AppSettings,
+  DetailEditorPreference,
+  Project,
+  QuickAddMode,
+  Task,
+  View,
+} from './types'
 
 const INBOX_ID = 'inbox'
 
@@ -81,6 +90,9 @@ function applyToggleCompleteState(t: Task): Task {
   return { ...t, completed: true }
 }
 
+/** 캘린더 더블클릭 등으로 상세 패널이 연 직후 포커스할 필드 */
+export type DetailPanelFocusRequest = 'task-title' | 'note-description' | null
+
 interface TodoContextValue {
   projects: Project[]
   tasks: Task[]
@@ -88,6 +100,10 @@ interface TodoContextValue {
   setView: (v: View) => void
   selectedTaskId: string | null
   setSelectedTaskId: (id: string | null) => void
+  detailPanelFocusRequest: DetailPanelFocusRequest
+  clearDetailPanelFocusRequest: () => void
+  /** 캘린더에서 날짜 더블클릭: 설정의 빠른 추가 모드(작업/노트)에 맞춰 입력 UI를 연다 */
+  openCalendarDayInput: (dueDateISO: string) => void
   addProject: (name: string) => void
   renameProject: (id: string, name: string) => void
   deleteProject: (id: string) => void
@@ -216,6 +232,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   })
   const [view, setView] = useState<View>({ type: 'today' })
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [detailPanelFocusRequest, setDetailPanelFocusRequest] = useState<DetailPanelFocusRequest>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [settings, setSettings] = useState<AppSettings>(() => {
     const s = hydrated?.settings
@@ -224,6 +241,8 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       notificationsEnabled: s?.notificationsEnabled ?? false,
       showCompletedTasks: s?.showCompletedTasks ?? true,
       defaultQuickAddMode: s?.defaultQuickAddMode ?? 'task',
+      detailEditorForTodo: (s?.detailEditorForTodo as DetailEditorPreference | undefined) ?? 'todo',
+      detailEditorForNote: (s?.detailEditorForNote as DetailEditorPreference | undefined) ?? 'auto',
     }
   })
   const recentSubtaskRequestsRef = useRef<Map<string, number>>(new Map())
@@ -416,6 +435,75 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     [view],
   )
 
+  const clearDetailPanelFocusRequest = useCallback(() => {
+    setDetailPanelFocusRequest(null)
+  }, [])
+
+  const openCalendarDayInput = useCallback(
+    (dueDateISO: string) => {
+      if (view.type !== 'calendar') return
+
+      const { projectId } = resolveQuickAddProjectAndDue(view, { dueDate: dueDateISO })
+      const nowIso = new Date().toISOString()
+      const mode = settings.defaultQuickAddMode
+      const tagSeed = [...new Set([...extraTagsFromView(view)])]
+
+      if (mode === 'task') {
+        const id = uid()
+        const task: Task = {
+          id,
+          title: '',
+          description: '',
+          completed: false,
+          dueDate: dueDateISO,
+          dueTime: null,
+          priority: 4,
+          projectId,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          tags: tagSeed,
+          recurrence: null,
+          parentId: null,
+        }
+        setDetailPanelFocusRequest('task-title')
+        setTasks((t) => [task, ...t])
+        setSelectedTaskId(id)
+        return
+      }
+
+      const noteTitle = formatTodayNoteTitle(parseISODate(dueDateISO))
+      const existing = tasks.find(
+        (t) => t.dueDate === dueDateISO && t.title === noteTitle && isNoteLikeTask(t),
+      )
+      if (existing) {
+        setDetailPanelFocusRequest('note-description')
+        setSelectedTaskId(existing.id)
+        return
+      }
+
+      const id = uid()
+      const task: Task = {
+        id,
+        title: noteTitle,
+        description: '',
+        completed: false,
+        dueDate: dueDateISO,
+        dueTime: null,
+        priority: 4,
+        projectId,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        tags: tagSeed,
+        recurrence: null,
+        parentId: null,
+      }
+      setDetailPanelFocusRequest('note-description')
+      setTasks((t) => [task, ...t])
+      setSelectedTaskId(id)
+    },
+    [view, settings.defaultQuickAddMode, tasks],
+  )
+
   const updateTask = useCallback(
     (
       id: string,
@@ -593,6 +681,10 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       return { baseVisibleTasks: [], viewTitle: '캘린더' }
     }
 
+    if (view.type === 'bookmarks') {
+      return { baseVisibleTasks: [], viewTitle: '북마크' }
+    }
+
     if (view.type === 'settings') {
       return { baseVisibleTasks: [], viewTitle: '설정' }
     }
@@ -659,6 +751,9 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       setView,
       selectedTaskId,
       setSelectedTaskId,
+      detailPanelFocusRequest,
+      clearDetailPanelFocusRequest,
+      openCalendarDayInput,
       addProject,
       renameProject,
       deleteProject,
@@ -684,6 +779,9 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       tasks,
       view,
       selectedTaskId,
+      detailPanelFocusRequest,
+      clearDetailPanelFocusRequest,
+      openCalendarDayInput,
       addProject,
       renameProject,
       deleteProject,

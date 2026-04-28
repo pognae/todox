@@ -25,6 +25,8 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
   const isSub = depth > 0
   const subCount = !task.parentId ? (subtaskCounts[task.id] ?? 0) : 0
 
+  const openDetail = () => setSelectedTaskId(task.id)
+
   return (
     <div
       className={`group flex items-start gap-3 border-b border-neutral-100 py-3 transition-colors ${
@@ -51,7 +53,7 @@ export function TaskItem({ task, depth = 0 }: { task: Task; depth?: number }) {
       <div
         role="presentation"
         className="min-w-0 flex-1 cursor-pointer text-left"
-        onClick={() => setSelectedTaskId(task.id)}
+        onClick={openDetail}
       >
         <div className="flex items-center gap-2">
           {isSub && (

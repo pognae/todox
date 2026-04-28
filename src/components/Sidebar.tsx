@@ -102,6 +102,21 @@ export function Sidebar() {
           }
         />
         <NavButton
+          active={view.type === 'bookmarks'}
+          onClick={() => setView({ type: 'bookmarks' })}
+          label="북마크"
+          icon={
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M17 21l-5-2.5L7 21V5a2 2 0 012-2h6a2 2 0 012 2v16z"
+              />
+            </svg>
+          }
+        />
+        <NavButton
           active={view.type === 'settings'}
           onClick={() => setView({ type: 'settings' })}
           label="설정"

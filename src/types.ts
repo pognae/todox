@@ -39,6 +39,9 @@ export interface Project {
 /** 빠른 추가 입력란의 종류 */
 export type QuickAddMode = 'task' | 'note'
 
+/** 목록 클릭 시 어떤 편집기를 사용할지 */
+export type DetailEditorPreference = 'auto' | 'todo' | 'note'
+
 export interface AppSettings {
   /** 마감 시간이 없을 때 이 시간에 알림 */
   defaultReminderTime: string
@@ -48,6 +51,10 @@ export interface AppSettings {
   showCompletedTasks: boolean
   /** 빠른 추가에서 처음 선택되는 모드 */
   defaultQuickAddMode: QuickAddMode
+  /** 작업 타입 편집기 */
+  detailEditorForTodo: DetailEditorPreference
+  /** 노트 타입 편집기 */
+  detailEditorForNote: DetailEditorPreference
 }
 
 export type View =
@@ -57,6 +64,7 @@ export type View =
   | { type: 'project'; projectId: string }
   /** month: 1–12 */
   | { type: 'calendar'; year: number; month: number }
+  | { type: 'bookmarks' }
   | { type: 'settings' }
   /** 정규화된 태그 문자열(소문자 등) */
   | { type: 'tag'; tag: string }

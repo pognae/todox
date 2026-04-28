@@ -1,5 +1,25 @@
 import type { PersistedState } from './storage'
-import type { Project, Task } from './types'
+import type { AppSettings, Project, Task } from './types'
+
+function defaultSettings(): AppSettings {
+  return {
+    defaultReminderTime: '09:00',
+    notificationsEnabled: false,
+    showCompletedTasks: true,
+    defaultQuickAddMode: 'task',
+    detailEditorForTodo: 'todo',
+    detailEditorForNote: 'auto',
+  }
+}
+
+function mergeSettings(local?: AppSettings, remote?: AppSettings): AppSettings {
+  const base = defaultSettings()
+  return {
+    ...base,
+    ...(remote ?? {}),
+    ...(local ?? {}),
+  }
+}
 
 function timeOf(x: { updatedAt?: string; createdAt?: string } | null | undefined): number {
   const s = x?.updatedAt ?? x?.createdAt
@@ -74,8 +94,8 @@ export function mergePersistedState(local: PersistedState, remote: PersistedStat
   return {
     tasks: mergeTasks(local.tasks ?? [], remote.tasks ?? []),
     projects: mergeProjects(local.projects ?? [], remote.projects ?? []),
-    // 설정은 사용자 의도가 강하므로 로컬 우선(없으면 원격)
-    settings: local.settings ?? remote.settings,
+    // 설정은 필드 단위로 병합(구버전 저장 데이터도 안전하게 마이그레이션)
+    settings: mergeSettings(local.settings, remote.settings),
   }
 }
 

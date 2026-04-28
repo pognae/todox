@@ -44,14 +44,24 @@ function sortTasksForCell(a: Task, b: Task): number {
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
 
 export function CalendarMonth() {
-  const { view, setView, tasks, searchQuery, setSelectedTaskId, subtaskCounts, settings } = useTodo()
+  const {
+    view,
+    setView,
+    tasks,
+    searchQuery,
+    setSelectedTaskId,
+    subtaskCounts,
+    settings,
+    openCalendarDayInput,
+  } = useTodo()
 
-  if (view.type !== 'calendar') return null
-
-  const { year, month } = view
+  const isCal = view.type === 'calendar'
+  const year = isCal ? view.year : new Date().getFullYear()
+  const month = isCal ? view.month : new Date().getMonth() + 1
 
   const byDay = useMemo(() => {
     const m = new Map<string, Task[]>()
+    if (!isCal) return m
     for (const t of tasks) {
       if (!t.dueDate || !isDueInMonth(t.dueDate, year, month)) continue
       if (!settings.showCompletedTasks && t.completed) continue
@@ -61,9 +71,11 @@ export function CalendarMonth() {
     }
     for (const list of m.values()) list.sort(sortTasksForCell)
     return m
-  }, [tasks, year, month, searchQuery, settings.showCompletedTasks])
+  }, [isCal, tasks, year, month, searchQuery, settings.showCompletedTasks])
 
   const cells = useMemo(() => buildGrid(year, month), [year, month])
+
+  if (!isCal) return null
 
   const title = new Intl.DateTimeFormat('ko-KR', {
     year: 'numeric',
@@ -125,9 +137,11 @@ export function CalendarMonth() {
           return (
             <div
               key={iso + String(inMonth)}
+              title="더블클릭: 설정「빠른 추가」기본 모드로 이 날짜에 작업 또는 노트 작성"
               className={`flex min-h-[88px] flex-col bg-white p-1 sm:min-h-[104px] sm:p-1.5 ${
                 inMonth ? '' : 'opacity-40'
               }`}
+              onDoubleClick={() => openCalendarDayInput(iso)}
             >
               <div className="mb-1 flex items-center justify-between gap-1">
                 <span
@@ -152,6 +166,7 @@ export function CalendarMonth() {
                     <button
                       type="button"
                       onClick={() => setSelectedTaskId(t.id)}
+                      onDoubleClick={(e) => e.stopPropagation()}
                       className={`w-full truncate rounded px-0.5 text-left text-[11px] leading-tight hover:bg-red-50 sm:text-xs ${
                         t.completed ? 'text-neutral-400 line-through' : 'text-neutral-700'
                       } ${depth > 0 ? 'pl-1.5' : ''}`}
@@ -182,7 +197,12 @@ export function CalendarMonth() {
                     )
                   })}
                 {dayTasks.length > 4 && (
-                  <li className="text-[10px] text-neutral-400">+{dayTasks.length - 4}</li>
+                  <li
+                    className="text-[10px] text-neutral-400"
+                    onDoubleClick={(e) => e.stopPropagation()}
+                  >
+                    +{dayTasks.length - 4}
+                  </li>
                 )}
               </ul>
             </div>
@@ -191,7 +211,7 @@ export function CalendarMonth() {
       </div>
 
       <p className="text-xs text-neutral-500">
-        마감일이 있는 작업만 달력에 표시됩니다. 검색창으로 태그·제목을 걸러 낼 수 있습니다.
+        마감일이 있는 작업만 달력에 표시됩니다. 검색창으로 태그·제목을 걸러 낼 수 있습니다. 날짜 칸을 더블클릭하면 설정의「빠른 추가」기본 모드(작업/노트)에 따라 그날 마감으로 작업을 만들거나 노트 편집기를 엽니다.
       </p>
     </div>
   )

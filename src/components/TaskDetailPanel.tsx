@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { compareTaskOrder } from '../taskTree'
 import { DescriptionEditor } from './DescriptionEditor'
 import { useTodo } from '../TodoContext'
@@ -23,6 +23,8 @@ export function TaskDetailPanel() {
     projects,
     addSubtask,
     toggleTaskCompleted,
+    detailPanelFocusRequest,
+    clearDetailPanelFocusRequest,
   } = useTodo()
 
   const task = useMemo(
@@ -40,6 +42,16 @@ export function TaskDetailPanel() {
   const [dueTime, setDueTime] = useState('')
   const [recurrenceType, setRecurrenceType] = useState<'' | RecurrenceType>('')
   const [subDraft, setSubDraft] = useState('')
+  const titleInputRef = useRef<HTMLInputElement>(null)
+
+  useLayoutEffect(() => {
+    if (!task || detailPanelFocusRequest !== 'task-title') return
+    const el = titleInputRef.current
+    if (!el) return
+    el.focus()
+    el.select()
+    clearDetailPanelFocusRequest()
+  }, [task, detailPanelFocusRequest, clearDetailPanelFocusRequest])
 
   useEffect(() => {
     if (!task) return
@@ -131,6 +143,7 @@ export function TaskDetailPanel() {
           )}
 
           <input
+            ref={titleInputRef}
             className="w-full border-0 border-b border-transparent pb-2 text-lg font-medium text-neutral-900 outline-none focus:border-todoist-red"
             value={title}
             onChange={(e) => setTitle(e.target.value)}

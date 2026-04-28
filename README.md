@@ -55,3 +55,39 @@ npm run dev
 - 앱 시작 시 로컬 캐시(`localStorage`)로 즉시 렌더링
 - 백그라운드에서 Supabase의 `todox_user_states`에서 상태를 불러와 덮어씀
 - 변경사항은 **디바운스** 후 Supabase에 `upsert`로 저장
+
+## Chrome 북마크 확장프로그램(선택)
+
+이 레포에는 간단한 크롬 확장프로그램이 포함되어 있습니다.
+
+- **아이콘 클릭**: 현재 탭을 북마크 목록에 추가
+- **아이콘 우클릭 메뉴**: `북마크 목록`(리스트 화면 열기), `현재 탭 북마크 추가`
+- **todox 앱 연결**: todox(`http://localhost:57327`)에서 좌측 메뉴 **북마크** 화면을 열면 확장프로그램의 북마크를 불러와 표시합니다.
+
+### 로드 방법(개발자 모드)
+
+1) 크롬에서 `chrome://extensions` 열기  
+2) 우측 상단 **개발자 모드** 켜기  
+3) **압축해제된 확장 프로그램을 로드합니다** 클릭  
+4) 이 프로젝트의 `chrome-extension/` 폴더 선택
+
+## GitHub Pages 무료 배포(웹 + 확장프로그램)
+
+### 웹 배포(GitHub Pages)
+
+이 프로젝트는 GitHub Pages의 **project pages**( `https://<user>.github.io/todox/` )로 배포하도록 설정되어 있습니다.
+
+1) GitHub 저장소 → **Settings → Pages**
+2) **Build and deployment** → Source를 **GitHub Actions**로 설정
+3) `main` 브랜치에 푸시하면 자동으로 배포됩니다. (`.github/workflows/deploy-gh-pages.yml`)
+
+> 참고: 리포지토리 이름이 `todox`가 아니라면 `vite.config.ts`의 `base`와, 확장프로그램 `manifest.json`의 `https://*.github.io/todox/*` 경로를 함께 바꿔야 합니다.
+
+### 확장프로그램(배포 도메인에서 브리지 동작)
+
+확장프로그램은 아래 URL에서 브리지가 동작하도록 설정되어 있습니다.
+
+- 로컬 개발: `http://localhost:57327/*`
+- GitHub Pages: `https://*.github.io/todox/*`
+
+배포 후에도 확장프로그램은 **Chrome 개발자 모드에서 `chrome-extension/`을 Load unpacked**로 로드해 사용하면 됩니다.

@@ -1,7 +1,7 @@
 import { TodoProvider } from './TodoContext'
 import { Sidebar } from './components/Sidebar'
 import { MainContent } from './components/MainContent'
-import { TaskDetailPanel } from './components/TaskDetailPanel'
+import { DetailPanels } from './components/DetailPanels'
 import { NotificationScheduler } from './components/NotificationScheduler'
 import { SyncBanner } from './components/SyncBanner'
 
@@ -13,7 +13,7 @@ function AppShell() {
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <Sidebar />
           <MainContent />
-          <TaskDetailPanel />
+          <DetailPanels />
           <NotificationScheduler />
         </div>
       </div>

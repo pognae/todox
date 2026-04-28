@@ -35,5 +35,9 @@ function devLogPlugin(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
+  // GitHub Pages(project pages) 배포용 base 경로
+  // - https://<user>.github.io/<repo>/ 형태에서 <repo>가 "todox"라면 "/todox/"
+  // - 로컬/dev는 "/"
+  base: process.env.GITHUB_PAGES ? '/todox/' : '/',
   plugins: [react(), tailwindcss(), devLogPlugin()],
 })
