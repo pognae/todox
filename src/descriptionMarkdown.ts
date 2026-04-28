@@ -1,6 +1,7 @@
 export type DescriptionEditorOp =
   | 'bold'
   | 'italic'
+  | 'strike'
   | 'bullet'
   | 'ordered'
   | 'quote'
@@ -287,6 +288,8 @@ export function applyDescriptionOp(
       return wrap('**', '굵게', '**')
     case 'italic':
       return wrap('*', '기울임', '*')
+    case 'strike':
+      return wrap('~~', '취소선', '~~')
     case 'code':
       return wrap('`', '코드', '`')
     case 'link': {

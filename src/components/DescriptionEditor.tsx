@@ -166,6 +166,7 @@ export const DescriptionEditor = forwardRef<HTMLTextAreaElement, DescriptionEdit
           <div className="flex flex-wrap gap-1">
             <ToolbarBtn label="B" title="굵게 (**)" onClick={() => runOp('bold')} />
             <ToolbarBtn label="I" title="기울임 (*)" onClick={() => runOp('italic')} />
+            <ToolbarBtn label="S" title="취소선 (~~)" onClick={() => runOp('strike')} />
             <ToolbarBtn label="목록" title="글머리 목록" onClick={() => runOp('bullet')} />
             <ToolbarBtn label="번호" title="번호 목록" onClick={() => runOp('ordered')} />
             <ToolbarBtn label="인용" title="인용 (>) " onClick={() => runOp('quote')} />
