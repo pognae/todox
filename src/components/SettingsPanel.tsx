@@ -13,7 +13,7 @@ import {
   type SyncStatus,
 } from '../storage'
 import { useAuth } from '../useAuth'
-import type { DetailEditorPreference, QuickAddMode } from '../types'
+import type { AppSettings, DetailEditorPreference, QuickAddMode } from '../types'
 
 export function SettingsPanel() {
   const { settings, updateSettings, requestNotificationPermission, tasks, projects, applyExternalState } = useTodo()
@@ -337,6 +337,32 @@ export function SettingsPanel() {
               onClick={() => updateSettings({ defaultQuickAddMode: id })}
               className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
                 settings.defaultQuickAddMode === id
+                  ? 'border-todoist-red bg-red-50 text-todoist-red'
+                  : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-sm font-semibold text-neutral-800">캘린더</h2>
+        <p className="mb-3 text-xs text-neutral-500">주의 시작 요일을 선택합니다.</p>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { id: 'mon' as const, label: '월요일 시작' },
+              { id: 'sun' as const, label: '일요일 시작' },
+            ] satisfies { id: NonNullable<AppSettings['weekStartsOn']>; label: string }[]
+          ).map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => updateSettings({ weekStartsOn: id })}
+              className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+                (settings.weekStartsOn ?? 'mon') === id
                   ? 'border-todoist-red bg-red-50 text-todoist-red'
                   : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50'
               }`}

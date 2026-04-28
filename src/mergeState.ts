@@ -9,6 +9,7 @@ function defaultSettings(): AppSettings {
     defaultQuickAddMode: 'task',
     detailEditorForTodo: 'todo',
     detailEditorForNote: 'auto',
+    weekStartsOn: 'mon',
   }
 }
 

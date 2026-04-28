@@ -14,11 +14,19 @@ function addCalendarMonths(
   return { year: d.getFullYear(), month: d.getMonth() + 1 }
 }
 
-function buildGrid(year: number, month1to12: number): { date: Date; inMonth: boolean }[] {
+function buildGrid(
+  year: number,
+  month1to12: number,
+  weekStartsOn: 'mon' | 'sun',
+): { date: Date; inMonth: boolean }[] {
   const first = new Date(year, month1to12 - 1, 1)
-  const mondayIndex = (first.getDay() + 6) % 7
+  // getDay(): Sun=0..Sat=6
+  const offset =
+    weekStartsOn === 'mon'
+      ? (first.getDay() + 6) % 7 // Mon=0..Sun=6
+      : first.getDay() // Sun=0..Sat=6
   const start = new Date(first)
-  start.setDate(first.getDate() - mondayIndex)
+  start.setDate(first.getDate() - offset)
   const cells: { date: Date; inMonth: boolean }[] = []
   const cur = new Date(start)
   for (let i = 0; i < 42; i++) {
@@ -41,7 +49,8 @@ function sortTasksForCell(a: Task, b: Task): number {
   return b.createdAt.localeCompare(a.createdAt)
 }
 
-const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
+const WEEKDAYS_MON = ['월', '화', '수', '목', '금', '토', '일']
+const WEEKDAYS_SUN = ['일', '월', '화', '수', '목', '금', '토']
 
 export function CalendarMonth() {
   const {
@@ -73,7 +82,9 @@ export function CalendarMonth() {
     return m
   }, [isCal, tasks, year, month, searchQuery, settings.showCompletedTasks])
 
-  const cells = useMemo(() => buildGrid(year, month), [year, month])
+  const weekStartsOn = settings.weekStartsOn ?? 'mon'
+  const cells = useMemo(() => buildGrid(year, month, weekStartsOn), [year, month, weekStartsOn])
+  const weekdays = weekStartsOn === 'sun' ? WEEKDAYS_SUN : WEEKDAYS_MON
 
   if (!isCal) return null
 
@@ -122,7 +133,7 @@ export function CalendarMonth() {
       </div>
 
       <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-neutral-200 bg-neutral-200 shadow-sm">
-        {WEEKDAYS.map((w) => (
+        {weekdays.map((w) => (
           <div
             key={w}
             className="bg-neutral-100 px-1 py-2 text-center text-xs font-semibold text-neutral-500"

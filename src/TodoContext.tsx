@@ -260,6 +260,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       detailEditorForTodo: (s?.detailEditorForTodo as DetailEditorPreference | undefined) ?? 'todo',
       detailEditorForNote: (s?.detailEditorForNote as DetailEditorPreference | undefined) ?? 'auto',
       timezoneOffsetMinutes: s?.timezoneOffsetMinutes ?? tzOff,
+      weekStartsOn: s?.weekStartsOn ?? 'mon',
     }
   })
   const recentSubtaskRequestsRef = useRef<Map<string, number>>(new Map())

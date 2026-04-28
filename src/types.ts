@@ -65,6 +65,8 @@ export interface AppSettings {
   detailEditorForNote: DetailEditorPreference
   /** 서버 푸시용: 이 기기의 timezone offset (Date.getTimezoneOffset()) */
   timezoneOffsetMinutes?: number
+  /** 캘린더 주 시작 요일 */
+  weekStartsOn?: 'mon' | 'sun'
 }
 
 export type View =
