@@ -106,7 +106,7 @@ export function TaskDetailPanel() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/20" role="presentation" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex justify-end bg-black/20" role="presentation" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"

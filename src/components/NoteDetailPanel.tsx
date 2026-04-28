@@ -78,7 +78,7 @@ export function NoteDetailPanel() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-black/30" role="presentation" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] bg-black/30" role="presentation" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
