@@ -81,6 +81,11 @@ npm run dev
 2) **Build and deployment** → Source를 **GitHub Actions**로 설정
 3) `main` 브랜치에 푸시하면 자동으로 배포됩니다. (`.github/workflows/deploy-gh-pages.yml`)
 
+> 중요: GitHub Pages 배포는 GitHub Actions에서 빌드되므로, Supabase 환경변수도 **GitHub Secrets**로 넣어야 합니다.
+> - 저장소 → Settings → Secrets and variables → Actions → **New repository secret**
+>   - `VITE_SUPABASE_URL`
+>   - `VITE_SUPABASE_ANON_KEY`
+
 > 참고: 리포지토리 이름이 `todox`가 아니라면 `vite.config.ts`의 `base`와, 확장프로그램 `manifest.json`의 `https://*.github.io/todox/*` 경로를 함께 바꿔야 합니다.
 
 ### 확장프로그램(배포 도메인에서 브리지 동작)
