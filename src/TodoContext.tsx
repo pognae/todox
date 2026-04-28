@@ -24,9 +24,11 @@ import { loadState, loadStateFromRemote, saveState } from './storage'
 import { onAuthStateChange } from './supabaseClient'
 import { isNoteLikeTask } from './noteUtils'
 import { computeNextDueDate } from './recurrence'
+import { pushBookmarks } from './bookmarksBridge'
 import { collectAllTagsFromTasks, normalizeTag, parseQuickAdd, taskMatchesSearch } from './tagUtils'
 import type {
   AppSettings,
+  Bookmark,
   DetailEditorPreference,
   Project,
   QuickAddMode,
@@ -96,6 +98,7 @@ export type DetailPanelFocusRequest = 'task-title' | 'note-description' | null
 interface TodoContextValue {
   projects: Project[]
   tasks: Task[]
+  bookmarks: Bookmark[]
   view: View
   setView: (v: View) => void
   selectedTaskId: string | null
@@ -107,6 +110,7 @@ interface TodoContextValue {
   addProject: (name: string) => void
   renameProject: (id: string, name: string) => void
   deleteProject: (id: string) => void
+  setBookmarks: (next: Bookmark[]) => void
   addTask: (
     title: string,
     opts?: { dueDate?: string | null; projectId?: string; tags?: string[]; mode?: QuickAddMode },
@@ -230,6 +234,10 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       return t
     })
   })
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => {
+    const raw = hydrated?.bookmarks
+    return Array.isArray(raw) ? raw : []
+  })
   const [view, setView] = useState<View>({ type: 'today' })
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [detailPanelFocusRequest, setDetailPanelFocusRequest] = useState<DetailPanelFocusRequest>(null)
@@ -246,14 +254,16 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     }
   })
   const recentSubtaskRequestsRef = useRef<Map<string, number>>(new Map())
-  const latestStateRef = useRef<{ tasks: Task[]; projects: Project[]; settings: AppSettings } | null>(null)
+  const latestStateRef = useRef<{ tasks: Task[]; projects: Project[]; settings: AppSettings; bookmarks: Bookmark[] } | null>(
+    null,
+  )
 
   useEffect(() => {
-    latestStateRef.current = { tasks, projects, settings }
-  }, [tasks, projects, settings])
+    latestStateRef.current = { tasks, projects, settings, bookmarks }
+  }, [tasks, projects, settings, bookmarks])
 
   const applyExternalState = useCallback(
-    (next: { tasks: Task[]; projects: Project[]; settings?: AppSettings }) => {
+    (next: { tasks: Task[]; projects: Project[]; settings?: AppSettings; bookmarks?: Bookmark[] }) => {
       const nextProjects = next.projects?.length ? next.projects : defaultProjects
       setProjects(() =>
         nextProjects.some((x) => x.id === INBOX_ID) ? nextProjects : [defaultProjects[0], ...nextProjects],
@@ -283,6 +293,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       })
 
       if (next.settings) setSettings((s) => ({ ...s, ...next.settings }))
+      if (Array.isArray(next.bookmarks)) setBookmarks(next.bookmarks)
     },
     [],
   )
@@ -294,7 +305,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       if (cancelled || !remote) return
 
       // 원격 로드가 로컬 변경(방금 추가한 작업)을 덮어써서 잠깐 보였다가 사라지는 경우가 있어 병합 적용
-      applyExternalState(mergePersistedState({ tasks, projects, settings }, remote))
+      applyExternalState(mergePersistedState({ tasks, projects, settings, bookmarks }, remote))
     })()
     return () => {
       cancelled = true
@@ -326,8 +337,14 @@ export function TodoProvider({ children }: { children: ReactNode }) {
   }, [applyExternalState])
 
   useEffect(() => {
-    saveState({ tasks, projects, settings })
-  }, [tasks, projects, settings])
+    saveState({ tasks, projects, settings, bookmarks })
+  }, [tasks, projects, settings, bookmarks])
+
+  // 북마크는 확장프로그램(로컬)과도 동기화해서 로그인 시 내려받은 북마크가 브라우저에도 바로 보이게 합니다.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    void pushBookmarks(bookmarks, 350)
+  }, [bookmarks])
 
   useEffect(() => {
     setProjects((p) => (p.some((x) => x.id === INBOX_ID) ? p : [defaultProjects[0], ...p]))
@@ -747,6 +764,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     () => ({
       projects,
       tasks,
+      bookmarks,
       view,
       setView,
       selectedTaskId,
@@ -757,6 +775,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       addProject,
       renameProject,
       deleteProject,
+      setBookmarks,
       addTask,
       updateTask,
       toggleTaskCompleted,
@@ -777,6 +796,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
     [
       projects,
       tasks,
+      bookmarks,
       view,
       selectedTaskId,
       detailPanelFocusRequest,
@@ -785,6 +805,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
       addProject,
       renameProject,
       deleteProject,
+      setBookmarks,
       addTask,
       updateTask,
       toggleTaskCompleted,

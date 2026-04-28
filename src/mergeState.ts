@@ -1,5 +1,5 @@
 import type { PersistedState } from './storage'
-import type { AppSettings, Project, Task } from './types'
+import type { AppSettings, Bookmark, Project, Task } from './types'
 
 function defaultSettings(): AppSettings {
   return {
@@ -90,12 +90,37 @@ function mergeProjects(local: Project[], remote: Project[]): Project[] {
   return [...map.values()]
 }
 
+function mergeBookmarks(local: Bookmark[] | undefined, remote: Bookmark[] | undefined): Bookmark[] | undefined {
+  const a = local ?? []
+  const b = remote ?? []
+  if (a.length === 0 && b.length === 0) return undefined
+
+  const map = new Map<string, Bookmark>()
+  const timeOf = (x: Bookmark) => Date.parse(x.addedAt || '') || 0
+  for (const x of b) {
+    if (!x?.url) continue
+    map.set(x.url, x)
+  }
+  for (const x of a) {
+    if (!x?.url) continue
+    const cur = map.get(x.url)
+    if (!cur) {
+      map.set(x.url, x)
+      continue
+    }
+    map.set(x.url, timeOf(x) >= timeOf(cur) ? x : cur)
+  }
+
+  return [...map.values()].sort((x, y) => (y.addedAt || '').localeCompare(x.addedAt || ''))
+}
+
 export function mergePersistedState(local: PersistedState, remote: PersistedState): PersistedState {
   return {
     tasks: mergeTasks(local.tasks ?? [], remote.tasks ?? []),
     projects: mergeProjects(local.projects ?? [], remote.projects ?? []),
     // 설정은 필드 단위로 병합(구버전 저장 데이터도 안전하게 마이그레이션)
     settings: mergeSettings(local.settings, remote.settings),
+    bookmarks: mergeBookmarks(local.bookmarks, remote.bookmarks),
   }
 }
 

@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTodo } from '../TodoContext'
+import { onBookmarksPush, pushBookmarks, requestBookmarks } from '../bookmarksBridge'
 
 type Bookmark = { id: string; url: string; title: string; addedAt: string }
-
-const BRIDGE_REQ = 'TODOX_BOOKMARKS_REQUEST'
-const BRIDGE_RES = 'TODOX_BOOKMARKS_RESPONSE'
-const BRIDGE_SET = 'TODOX_BOOKMARKS_SET'
-const BRIDGE_ACK = 'TODOX_BOOKMARKS_SET_ACK'
-const BRIDGE_PUSH = 'TODOX_BOOKMARKS_PUSH'
 
 function isHttpUrl(url: string): boolean {
   return /^https?:\/\//.test(url)
@@ -44,66 +40,9 @@ function safeParseBookmarks(json: string): Bookmark[] | null {
   }
 }
 
-async function requestFromExtension(timeoutMs: number): Promise<Bookmark[] | null> {
-  const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
-  return await new Promise((resolve) => {
-    let done = false
-    const t = window.setTimeout(() => {
-      if (done) return
-      done = true
-      window.removeEventListener('message', onMsg)
-      resolve(null)
-    }, timeoutMs)
-
-    const onMsg = (e: MessageEvent) => {
-      const data = e.data
-      if (!data || typeof data !== 'object') return
-      if ((data as any).type !== BRIDGE_RES) return
-      if ((data as any).requestId !== requestId) return
-      const bookmarks = (data as any).bookmarks
-      window.clearTimeout(t)
-      if (done) return
-      done = true
-      window.removeEventListener('message', onMsg)
-      resolve(Array.isArray(bookmarks) ? bookmarks : null)
-    }
-
-    window.addEventListener('message', onMsg)
-    window.postMessage({ type: BRIDGE_REQ, requestId }, '*')
-  })
-}
-
-async function pushToExtension(next: Bookmark[], timeoutMs: number): Promise<boolean> {
-  const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
-  return await new Promise((resolve) => {
-    let done = false
-    const t = window.setTimeout(() => {
-      if (done) return
-      done = true
-      window.removeEventListener('message', onMsg)
-      resolve(false)
-    }, timeoutMs)
-
-    const onMsg = (e: MessageEvent) => {
-      const data = e.data
-      if (!data || typeof data !== 'object') return
-      if ((data as any).type !== BRIDGE_ACK) return
-      if ((data as any).requestId !== requestId) return
-      window.clearTimeout(t)
-      if (done) return
-      done = true
-      window.removeEventListener('message', onMsg)
-      resolve(true)
-    }
-
-    window.addEventListener('message', onMsg)
-    window.postMessage({ type: BRIDGE_SET, requestId, bookmarks: next }, '*')
-  })
-}
-
 export function BookmarksPanel() {
   const [q, setQ] = useState('')
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
+  const { bookmarks, setBookmarks } = useTodo()
   const [bridgeState, setBridgeState] = useState<'unknown' | 'connected' | 'missing'>('unknown')
   const [busy, setBusy] = useState(false)
   const importRef = useRef<HTMLTextAreaElement>(null)
@@ -117,7 +56,7 @@ export function BookmarksPanel() {
   const refresh = async () => {
     setBusy(true)
     try {
-      const res = await requestFromExtension(650)
+      const res = await requestBookmarks(650)
       if (res) {
         setBookmarks(res)
         setBridgeState('connected')
@@ -135,22 +74,16 @@ export function BookmarksPanel() {
   }, [])
 
   useEffect(() => {
-    const onPush = (e: MessageEvent) => {
-      const data = e.data
-      if (!data || typeof data !== 'object') return
-      if ((data as any).type !== BRIDGE_PUSH) return
-      const next = (data as any).bookmarks
-      if (!Array.isArray(next)) return
+    const off = onBookmarksPush((next) => {
       setBookmarks(next)
       setBridgeState('connected')
-    }
-    window.addEventListener('message', onPush)
-    return () => window.removeEventListener('message', onPush)
+    })
+    return off
   }, [])
 
   const applyAndSync = async (next: Bookmark[]) => {
     setBookmarks(next)
-    const ok = await pushToExtension(next, 650)
+    const ok = await pushBookmarks(next, 650)
     setBridgeState(ok ? 'connected' : 'missing')
   }
 

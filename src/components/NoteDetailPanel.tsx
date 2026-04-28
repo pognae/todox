@@ -3,12 +3,12 @@ import { DescriptionEditor } from './DescriptionEditor'
 import { formatKoreanDate } from '../dateUtils'
 import { normalizeTag } from '../tagUtils'
 import { useTodo } from '../TodoContext'
-import { onBookmarksPush, requestBookmarks, type BridgeBookmark } from '../bookmarksBridge'
 import { normalizeOrderedMarkers } from '../descriptionMarkdown'
 
 export function NoteDetailPanel() {
   const {
     tasks,
+    bookmarks,
     selectedTaskId,
     setSelectedTaskId,
     setView,
@@ -33,7 +33,6 @@ export function NoteDetailPanel() {
   const [tags, setTags] = useState<string[]>([])
   const [tagDraft, setTagDraft] = useState('')
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null)
-  const [bridgeBookmarks, setBridgeBookmarks] = useState<BridgeBookmark[]>([])
 
   useLayoutEffect(() => {
     if (!task || detailPanelFocusRequest !== 'note-description') return
@@ -53,19 +52,6 @@ export function NoteDetailPanel() {
     setTags([...task.tags])
     setTagDraft('')
   }, [task])
-
-  useEffect(() => {
-    let alive = true
-    void requestBookmarks(650).then((b) => {
-      if (!alive) return
-      if (b) setBridgeBookmarks(b)
-    })
-    const off = onBookmarksPush((next) => setBridgeBookmarks(next))
-    return () => {
-      alive = false
-      off()
-    }
-  }, [])
 
   if (!task) return null
 
@@ -157,7 +143,7 @@ export function NoteDetailPanel() {
                 slashCommands={{
                   enabled: true,
                   tasks,
-                  bookmarks: bridgeBookmarks,
+                  bookmarks,
                   onOpenTask: (id) => setSelectedTaskId(id),
                   onOpenBookmarks: () => setView({ type: 'bookmarks' }),
                 }}

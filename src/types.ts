@@ -36,6 +36,14 @@ export interface Project {
   updatedAt?: string
 }
 
+export interface Bookmark {
+  id: string
+  url: string
+  title: string
+  /** ISO timestamp */
+  addedAt: string
+}
+
 /** 빠른 추가 입력란의 종류 */
 export type QuickAddMode = 'task' | 'note'
 

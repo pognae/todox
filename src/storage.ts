@@ -1,4 +1,4 @@
-import type { AppSettings, Project, Task } from './types'
+import type { AppSettings, Bookmark, Project, Task } from './types'
 import { ensureSignedInAnonymously, getSupabaseClient } from './supabaseClient'
 
 const KEY = 'todox-v1'
@@ -10,6 +10,7 @@ export interface PersistedState {
   tasks: Task[]
   projects: Project[]
   settings?: AppSettings
+  bookmarks?: Bookmark[]
 }
 
 export type SyncStatus =
