@@ -456,12 +456,6 @@ export const DescriptionEditor = forwardRef<HTMLTextAreaElement, DescriptionEdit
               </div>
             </div>
           ) : null}
-          <div className="border-t border-neutral-100 px-3 py-2">
-            <div className="mb-1 text-[11px] text-neutral-400">실시간 서식 미리보기 (취소선 포함)</div>
-            <div className={`max-h-48 overflow-y-auto ${MD_PREVIEW_PROSE}`}>
-              <MarkdownPreviewBody source={value} slashCommands={slashCommands} />
-            </div>
-          </div>
         </div>
       ) : (
         <div
