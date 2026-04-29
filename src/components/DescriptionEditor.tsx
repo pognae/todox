@@ -21,6 +21,9 @@ import {
 
 type Tab = 'edit' | 'preview'
 
+const MD_PREVIEW_PROSE =
+  'text-sm leading-5 text-neutral-800 [&_blockquote]:my-0.5 [&_blockquote]:border-l-4 [&_blockquote]:border-neutral-300 [&_blockquote]:pl-3 [&_blockquote]:text-neutral-600 [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[13px] [&_h2]:mb-0.5 [&_h2]:mt-1.5 [&_h2]:text-base [&_h2]:font-semibold [&_li]:my-0 [&_li]:leading-snug [&_ol]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-0 [&_p]:leading-snug [&_strong]:font-semibold [&_ul]:my-0.5 [&_ul]:list-disc [&_ul]:pl-5'
+
 export type DescriptionEditorProps = {
   value: string
   onChange: (v: string) => void
@@ -35,6 +38,65 @@ export type DescriptionEditorProps = {
     onOpenTask?: (id: string) => void
     onOpenBookmarks?: () => void
   }
+}
+
+function MarkdownPreviewBody({
+  source,
+  slashCommands,
+}: {
+  source: string
+  slashCommands?: DescriptionEditorProps['slashCommands']
+}) {
+  return source.trim() ? (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        del: ({ children }: { children?: ReactNode }) => (
+          <del className="line-through decoration-neutral-400 [text-decoration-thickness:0.07em]">{children}</del>
+        ),
+        a: ({ href, children }) => {
+          const h = href ?? ''
+          if (h.startsWith('todox-task:')) {
+            const id = h.slice('todox-task:'.length)
+            return (
+              <button
+                type="button"
+                className="!text-blue-600 underline underline-offset-2 hover:!text-blue-700"
+                onClick={() => slashCommands?.onOpenTask?.(id)}
+              >
+                {children}
+              </button>
+            )
+          }
+          if (h.startsWith('todox-bookmark:')) {
+            return (
+              <button
+                type="button"
+                className="!text-blue-600 underline underline-offset-2 hover:!text-blue-700"
+                onClick={() => slashCommands?.onOpenBookmarks?.()}
+              >
+                {children}
+              </button>
+            )
+          }
+          return (
+            <a
+              href={h}
+              target="_blank"
+              rel="noreferrer"
+              className="text-todoist-red underline underline-offset-2 hover:text-red-700"
+            >
+              {children}
+            </a>
+          )
+        },
+      }}
+    >
+      {source}
+    </ReactMarkdown>
+  ) : (
+    <p className="text-neutral-400">내용이 없습니다.</p>
+  )
 }
 
 function assignForwardedRef<T>(ref: Ref<T> | undefined, value: T | null) {
@@ -209,8 +271,8 @@ export const DescriptionEditor = forwardRef<HTMLTextAreaElement, DescriptionEdit
             ref={setTextareaRef}
             className={
               layout === 'noteFull'
-                ? 'min-h-0 w-full flex-1 resize-none border-0 bg-transparent p-4 text-sm leading-6 outline-none'
-                : 'w-full resize-y border-0 bg-transparent p-3 text-sm outline-none'
+                ? 'min-h-0 w-full flex-1 resize-none border-0 bg-transparent p-4 text-sm leading-5 outline-none'
+                : 'w-full resize-y border-0 bg-transparent p-3 text-sm leading-5 outline-none'
             }
             style={layout === 'noteFull' ? { minHeight: '12rem' } : { minHeight: '8rem' }}
             value={value}
@@ -394,63 +456,24 @@ export const DescriptionEditor = forwardRef<HTMLTextAreaElement, DescriptionEdit
               </div>
             </div>
           ) : null}
+          <div className="border-t border-neutral-100 px-3 py-2">
+            <div className="mb-1 text-[11px] text-neutral-400">실시간 서식 미리보기 (취소선 포함)</div>
+            <div className={`max-h-48 overflow-y-auto ${MD_PREVIEW_PROSE}`}>
+              <MarkdownPreviewBody source={value} slashCommands={slashCommands} />
+            </div>
+          </div>
         </div>
       ) : (
         <div
           className={
             layout === 'noteFull'
-              ? 'min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap p-4 text-sm leading-6 text-neutral-800 [&_blockquote]:my-1 [&_blockquote]:border-l-4 [&_blockquote]:border-neutral-300 [&_blockquote]:pl-3 [&_blockquote]:text-neutral-600 [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[13px] [&_h2]:mb-1 [&_h2]:mt-2 [&_h2]:text-base [&_h2]:font-semibold [&_li]:my-0 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-0.5 [&_strong]:font-semibold [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5'
-              : 'max-h-64 min-h-[8rem] overflow-y-auto whitespace-pre-wrap p-3 text-sm leading-6 text-neutral-800 [&_blockquote]:my-1 [&_blockquote]:border-l-4 [&_blockquote]:border-neutral-300 [&_blockquote]:pl-3 [&_blockquote]:text-neutral-600 [&_code]:rounded [&_code]:bg-neutral-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[13px] [&_h2]:mb-1 [&_h2]:mt-2 [&_h2]:text-base [&_h2]:font-semibold [&_li]:my-0 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-0.5 [&_strong]:font-semibold [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5'
+              ? `min-h-0 flex-1 overflow-y-auto p-4 ${MD_PREVIEW_PROSE}`
+              : `max-h-64 min-h-[8rem] overflow-y-auto p-3 ${MD_PREVIEW_PROSE}`
           }
           role="document"
           aria-label="설명 미리보기"
         >
-          {value.trim() ? (
-            <ReactMarkdown
-              components={{
-                a: ({ href, children }) => {
-                  const h = href ?? ''
-                  if (h.startsWith('todox-task:')) {
-                    const id = h.slice('todox-task:'.length)
-                    return (
-                      <button
-                        type="button"
-                        className="!text-blue-600 underline underline-offset-2 hover:!text-blue-700"
-                        onClick={() => slashCommands?.onOpenTask?.(id)}
-                      >
-                        {children}
-                      </button>
-                    )
-                  }
-                  if (h.startsWith('todox-bookmark:')) {
-                    return (
-                      <button
-                        type="button"
-                        className="!text-blue-600 underline underline-offset-2 hover:!text-blue-700"
-                        onClick={() => slashCommands?.onOpenBookmarks?.()}
-                      >
-                        {children}
-                      </button>
-                    )
-                  }
-                  return (
-                    <a
-                      href={h}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-todoist-red underline underline-offset-2 hover:text-red-700"
-                    >
-                      {children}
-                    </a>
-                  )
-                },
-              }}
-            >
-              {value}
-            </ReactMarkdown>
-          ) : (
-            <p className="text-neutral-400">내용이 없습니다.</p>
-          )}
+          <MarkdownPreviewBody source={value} slashCommands={slashCommands} />
         </div>
       )}
     </div>
