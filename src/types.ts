@@ -25,6 +25,8 @@ export interface Task {
   recurrence: TaskRecurrence | null
   /** 상위 작업 id. 상위는 항상 최상위(parentId가 null)만 허용 */
   parentId: string | null
+  /** 빠른 추가(노트)·캘린더 노트 등으로 만든 항목. 제목을 바꿔도 노트 메뉴에 남김 */
+  isNote?: boolean
 }
 
 export interface Project {

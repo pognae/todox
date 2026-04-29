@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { isNoteLikeTask } from '../noteUtils'
+import { isNoteTask } from '../noteUtils'
 import { useTodo } from '../TodoContext'
 import { formatKoreanDate } from '../dateUtils'
 
@@ -9,7 +9,7 @@ export function NotesPanel() {
   const notes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     return tasks
-      .filter((t) => isNoteLikeTask(t))
+      .filter((t) => isNoteTask(t))
       .filter((t) => {
         if (!q) return true
         return (t.title || '').toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q)

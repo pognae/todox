@@ -58,7 +58,7 @@ export function NoteDetailPanel() {
   const persistTags = (next: string[]) => {
     const clean = [...new Set(next.map((x) => normalizeTag(x)).filter(Boolean))]
     setTags(clean)
-    updateTask(task.id, { tags: clean })
+    updateTask(task.id, { tags: clean, isNote: true })
   }
 
   const save = () => {
@@ -69,6 +69,7 @@ export function NoteDetailPanel() {
       dueTime: dueTime.trim() || null,
       projectId,
       tags: [...new Set(tags.map((x) => normalizeTag(x)).filter(Boolean))],
+      isNote: true,
     })
   }
 
@@ -200,9 +201,9 @@ export function NoteDetailPanel() {
                     setDueDate(v)
                     if (!v) {
                       setDueTime('')
-                      updateTask(task.id, { dueDate: null, dueTime: null })
+                      updateTask(task.id, { dueDate: null, dueTime: null, isNote: true })
                     } else {
-                      updateTask(task.id, { dueDate: v })
+                      updateTask(task.id, { dueDate: v, isNote: true })
                     }
                   }}
                   onBlur={save}
@@ -224,7 +225,7 @@ export function NoteDetailPanel() {
                   onChange={(e) => {
                     const v = e.target.value
                     setDueTime(v)
-                    updateTask(task.id, { dueTime: v || null })
+                    updateTask(task.id, { dueTime: v || null, isNote: true })
                   }}
                   onBlur={save}
                 />
@@ -240,7 +241,7 @@ export function NoteDetailPanel() {
                   value={projectId}
                   onChange={(e) => {
                     setProjectId(e.target.value)
-                    updateTask(task.id, { projectId: e.target.value })
+                    updateTask(task.id, { projectId: e.target.value, isNote: true })
                   }}
                   onBlur={save}
                 >

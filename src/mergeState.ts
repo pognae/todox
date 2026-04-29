@@ -56,6 +56,13 @@ function mergeTasks(local: Task[], remote: Task[]): Task[] {
       ...winner,
       // 태그는 합치기
       tags: mergeTags(winner.tags, loser.tags),
+      // 한쪽이라도 노트로 표시되면 노트로 유지(목록 누락 방지)
+      isNote:
+        lt.isNote === true || rt.isNote === true
+          ? true
+          : lt.isNote === false && rt.isNote === false
+            ? false
+            : winner.isNote ?? loser.isNote,
       // winner의 타임스탬프 보존(없으면 createdAt을 updatedAt처럼 취급)
       updatedAt: winner.updatedAt ?? winner.createdAt,
     })

@@ -24,7 +24,7 @@ import { loadState, loadStateFromRemote, saveState } from './storage'
 import { Capacitor } from '@capacitor/core'
 import { getSupabaseClient, onAuthStateChange } from './supabaseClient'
 import { requestNativeNotificationPermission } from './nativeNotifications'
-import { isNoteLikeTask } from './noteUtils'
+import { isNoteTask, withInferredNoteMeta } from './noteUtils'
 import { computeNextDueDate } from './recurrence'
 import { onBookmarksPush, pushBookmarks, requestBookmarks } from './bookmarksBridge'
 import { collectAllTagsFromTasks, normalizeTag, parseQuickAdd, taskMatchesSearch } from './tagUtils'
@@ -132,6 +132,7 @@ interface TodoContextValue {
         | 'tags'
         | 'recurrence'
         | 'parentId'
+        | 'isNote'
       >
     >,
   ) => void
@@ -229,12 +230,14 @@ export function TodoProvider({ children }: { children: ReactNode }) {
         updatedAt: x.updatedAt ?? x.createdAt,
       }
     })
-    return step1.map((t) => {
-      if (!t.parentId) return t
-      const p = step1.find((x) => x.id === t.parentId)
-      if (!p || p.parentId) return { ...t, parentId: null }
-      return t
-    })
+    return step1
+      .map((t) => {
+        if (!t.parentId) return t
+        const p = step1.find((x) => x.id === t.parentId)
+        if (!p || p.parentId) return { ...t, parentId: null }
+        return t
+      })
+      .map(withInferredNoteMeta)
   })
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => {
     const raw = hydrated?.bookmarks
@@ -298,12 +301,14 @@ export function TodoProvider({ children }: { children: ReactNode }) {
             updatedAt: x.updatedAt ?? x.createdAt,
           }
         })
-        return step1.map((t) => {
-          if (!t.parentId) return t
-          const p = step1.find((x) => x.id === t.parentId)
-          if (!p || p.parentId) return { ...t, parentId: null }
-          return t
-        })
+        return step1
+          .map((t) => {
+            if (!t.parentId) return t
+            const p = step1.find((x) => x.id === t.parentId)
+            if (!p || p.parentId) return { ...t, parentId: null }
+            return t
+          })
+          .map(withInferredNoteMeta)
       })
 
       if (next.settings) setSettings((s) => ({ ...s, ...next.settings }))
@@ -506,6 +511,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
           tags: noteTags,
           recurrence: null,
           parentId: null,
+          isNote: true,
         }
         setTasks((t) => [task, ...t])
         return
@@ -584,7 +590,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
 
       const noteTitle = formatTodayNoteTitle(parseISODate(dueDateISO))
       const existing = tasks.find(
-        (t) => t.dueDate === dueDateISO && t.title === noteTitle && isNoteLikeTask(t),
+        (t) => t.dueDate === dueDateISO && t.title === noteTitle && isNoteTask(t),
       )
       if (existing) {
         setDetailPanelFocusRequest('note-description')
@@ -607,6 +613,7 @@ export function TodoProvider({ children }: { children: ReactNode }) {
         tags: tagSeed,
         recurrence: null,
         parentId: null,
+        isNote: true,
       }
       setDetailPanelFocusRequest('note-description')
       setTasks((t) => [task, ...t])
@@ -629,8 +636,9 @@ export function TodoProvider({ children }: { children: ReactNode }) {
           | 'completed'
           | 'projectId'
           | 'tags'
-          | 'recurrence'
-          | 'parentId'
+        | 'recurrence'
+        | 'parentId'
+        | 'isNote'
         >
       >,
     ) => {
