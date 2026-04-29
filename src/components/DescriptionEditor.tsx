@@ -7,9 +7,11 @@ import {
   useRef,
   useState,
   type MutableRefObject,
+  type ReactNode,
   type Ref,
 } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import {
   applyDescriptionOp,
   handleMarkdownEnter,
