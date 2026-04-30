@@ -8,6 +8,34 @@ export type DescriptionEditorOp =
   | 'code'
   | 'link'
   | 'heading'
+  | 'taskList'
+  | 'hr'
+  | 'table'
+
+/** GFM 작업 목록 줄 인덱스(소스 기준 0-based). 미리보기 체크박스 순서와 대응 */
+export function findTaskListSourceLineIndices(value: string): number[] {
+  const lines = value.split('\n')
+  const out: number[] = []
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*[-*+]\s+\[[ xX]\]\s/.test(lines[i]!)) out.push(i)
+  }
+  return out
+}
+
+/** `- [ ]` / `- [x]` 토글 */
+export function toggleTaskListLineAt(value: string, lineIndex: number): string {
+  const lines = value.split('\n')
+  if (lineIndex < 0 || lineIndex >= lines.length) return value
+  const line = lines[lineIndex]!
+  const m = /^(\s*[-*+]\s+)\[([ xX])\](\s*)(.*)$/.exec(line)
+  if (!m) return value
+  const checked = m[2]!.toLowerCase() === 'x'
+  const nextMark = checked ? ' ' : 'x'
+  const sp = m[3] ?? ' '
+  const rest = m[4] ?? ''
+  lines[lineIndex] = `${m[1]}[${nextMark}]${sp}${rest}`
+  return lines.join('\n')
+}
 
 export function lineStart(s: string, pos: number): number {
   let i = pos
@@ -334,6 +362,21 @@ export function applyDescriptionOp(
         selStart: a + 3,
         selEnd: a + 3 + stripped.length,
       }
+    }
+    case 'taskList':
+      return prefixEachLineInRange(value, selStart, selEnd, '- [ ] ')
+    case 'hr': {
+      const ins = selStart > 0 && value[selStart - 1] !== '\n' ? '\n---\n' : '---\n'
+      const text = value.slice(0, selStart) + ins + value.slice(selEnd)
+      const pos = selStart + ins.length
+      return { text, selStart: pos, selEnd: pos }
+    }
+    case 'table': {
+      const template =
+        '\n| 항목 | 내용 |\n| --- | --- |\n|  |  |\n'
+      const text = value.slice(0, selStart) + template + value.slice(selEnd)
+      const pos = selStart + template.length
+      return { text, selStart: pos, selEnd: pos }
     }
   }
 }

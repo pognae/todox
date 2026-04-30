@@ -5,6 +5,7 @@ import { MainContent } from './components/MainContent'
 import { DetailPanels } from './components/DetailPanels'
 import { NotificationScheduler } from './components/NotificationScheduler'
 import { SyncBanner } from './components/SyncBanner'
+import { WebPushTokenSync } from './components/WebPushTokenSync'
 
 function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -17,6 +18,7 @@ function AppShell() {
           <MainContent onOpenSidebar={() => setSidebarOpen(true)} />
           <DetailPanels />
           <NotificationScheduler />
+          <WebPushTokenSync />
         </div>
       </div>
     </div>
