@@ -1,7 +1,7 @@
-import { initializeApp } from 'firebase/app'
+import { getApps, initializeApp } from 'firebase/app'
 import { getMessaging, getToken, isSupported, onMessage, type Messaging } from 'firebase/messaging'
 import { getSupabaseClient, ensureSignedInAnonymously } from './supabaseClient'
-import { registerFcmServiceWorker } from './pwa'
+import { registerServiceWorker } from './pwa'
 
 type WebPushConfig = {
   apiKey: string
@@ -48,20 +48,38 @@ export async function initWebPush(): Promise<{ supported: boolean; configured: b
   if (!cfg) return { supported: false, configured: false }
   if (!(await isSupported())) return { supported: false, configured: true }
 
-  const app = initializeApp({
-    apiKey: cfg.apiKey,
-    authDomain: cfg.authDomain,
-    projectId: cfg.projectId,
-    appId: cfg.appId,
-    messagingSenderId: cfg.messagingSenderId,
-  })
-  messaging = getMessaging(app)
+  if (!messaging) {
+    const app =
+      getApps().length === 0
+        ? initializeApp({
+            apiKey: cfg.apiKey,
+            authDomain: cfg.authDomain,
+            projectId: cfg.projectId,
+            appId: cfg.appId,
+            messagingSenderId: cfg.messagingSenderId,
+          })
+        : getApps()[0]!
+    messaging = getMessaging(app)
 
-  onMessage(messaging, (payload) => {
-    // foreground 메시지: 브라우저 알림은 서버/OS가 처리하므로 여기서는 최소 처리만
-    // eslint-disable-next-line no-console
-    console.log('[todox][push] foreground message', payload)
-  })
+    onMessage(messaging, (payload) => {
+      // 포그라운드: FCM은 기본 시스템 알림을 띄우지 않아 직접 표시
+      const title = (payload.notification?.title as string | undefined) || 'todox 알림'
+      const body = (payload.notification?.body as string | undefined) || ''
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+      void (async () => {
+        try {
+          const reg = await navigator.serviceWorker.ready
+          await reg.showNotification(title, { body: body || '\u00a0' })
+        } catch {
+          try {
+            new Notification(title, { body: body || '\u00a0' })
+          } catch {
+            // ignore
+          }
+        }
+      })()
+    })
+  }
 
   return { supported: true, configured: true }
 }
@@ -88,7 +106,7 @@ export async function registerWebPushToken(): Promise<{ ok: boolean; reason?: st
   }
 
   // token 획득
-  const swReg = (await registerFcmServiceWorker()) ?? (await navigator.serviceWorker.getRegistration())
+  const swReg = await registerServiceWorker()
   const token = await getToken(messaging, {
     vapidKey: cfg.vapidKey,
     serviceWorkerRegistration: swReg ?? undefined,

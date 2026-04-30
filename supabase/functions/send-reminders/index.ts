@@ -152,7 +152,7 @@ async function sendFcm(tokens: string[], title: string, body: string): Promise<v
 
   // 가장 단순한 방식: 토큰별 단건 발송(규모가 커지면 batch로 최적화)
   await Promise.allSettled(tokens.slice(0, 200).map(async (token) => {
-    await fetch(`https://fcm.googleapis.com/v1/projects/${svc.project_id}/messages:send`, {
+    const r = await fetch(`https://fcm.googleapis.com/v1/projects/${svc.project_id}/messages:send`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${access}`,
@@ -166,6 +166,10 @@ async function sendFcm(tokens: string[], title: string, body: string): Promise<v
         },
       }),
     })
+    if (!r.ok) {
+      const t = await r.text()
+      console.error('[send-reminders] fcm send failed', r.status, t)
+    }
   }))
 }
 
@@ -178,7 +182,8 @@ async function listUsersWithDevices(): Promise<string[]> {
 
 Deno.serve(async () => {
   const now = Date.now()
-  const windowMs = 60_000 // 1분 윈도우
+  // 크론이 정각과 어긋나도 놓치지 않도록 여유 윈도우(분 단위 실행 전제)
+  const windowMs = 5 * 60_000
 
   const userIds = await listUsersWithDevices()
   let fired = 0
